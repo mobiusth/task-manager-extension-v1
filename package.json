@@ -1,0 +1,49 @@
+{
+  "name": "task-manager-extension-v1",
+  "displayName": "Task Manager Extension",
+  "description": "A local workspace task manager built as a VS Code Webview extension.",
+  "version": "0.9.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:taskManager.open"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "taskManager.open",
+        "title": "Task Manager: Open"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "npm run compile:extension && npm run typecheck:webview && npm run build:webview",
+    "compile:extension": "tsc -p ./",
+    "typecheck:webview": "tsc -p ./tsconfig.webview.json",
+    "build:webview": "vite build",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.90.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.3.1",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@tiptap/pm": "^2.4.0",
+    "@tiptap/react": "^2.4.0",
+    "@tiptap/starter-kit": "^2.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
