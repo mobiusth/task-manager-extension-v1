@@ -2,7 +2,7 @@
   "name": "task-manager-extension-v1",
   "displayName": "Task Manager Extension",
   "description": "A local workspace task manager built as a VS Code Webview extension.",
-  "version": "0.9.0",
+  "version": "0.9.2",
   "publisher": "local",
   "engines": {
     "vscode": "^1.90.0"
@@ -11,10 +11,29 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:taskManager.open"
+    "onCommand:taskManager.open",
+    "onView:taskManager.tasksView"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "taskManager",
+          "title": "Task Manager",
+          "icon": "media/task-manager-extension-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "taskManager": [
+        {
+          "id": "taskManager.tasksView",
+          "name": "Tasks",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "taskManager.open",
@@ -27,23 +46,24 @@
     "compile:extension": "tsc -p ./",
     "typecheck:webview": "tsc -p ./tsconfig.webview.json",
     "build:webview": "vite build",
+    "package:vsix": "npm run compile && vsce package --allow-missing-repository --out task-manager-extension-v1-0.9.2.vsix",
+    "publish:marketplace": "npm run compile && vsce publish",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
+    "@tiptap/pm": "^2.4.0",
+    "@tiptap/react": "^2.4.0",
+    "@tiptap/starter-kit": "^2.4.0",
     "@types/node": "^20.14.8",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.3.1",
-    "typescript": "^5.4.5"
-  },
-  "dependencies": {
-    "@tiptap/pm": "^2.4.0",
-    "@tiptap/react": "^2.4.0",
-    "@tiptap/starter-kit": "^2.4.0",
+    "@vscode/vsce": "^3.2.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.3.1"
   }
 }

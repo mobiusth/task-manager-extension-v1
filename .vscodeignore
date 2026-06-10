@@ -1,5 +1,11 @@
 node_modules
 src
 *.map
+**/*.map
 tsconfig.json
+tsconfig.webview.json
+vite.config.ts
+.vscode
+.gitignore
 .task-manager
+dist

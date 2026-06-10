@@ -25,6 +25,7 @@ export function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<TaskDraft>(createEmptyDraft);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [status, setStatus] = useState('');
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedId), [selectedId, tasks]);
@@ -36,8 +37,8 @@ export function App() {
       }
 
       const nextTasks = event.data.tasks.map(normalizeTask);
-      const nextSelectedId = event.data.selectedId || selectedId || nextTasks[0]?.id || null;
-      const validSelectedId = nextTasks.some((task) => task.id === nextSelectedId) ? nextSelectedId : nextTasks[0]?.id || null;
+      const nextSelectedId = event.data.selectedId || selectedId || null;
+      const validSelectedId = nextSelectedId && nextTasks.some((task) => task.id === nextSelectedId) ? nextSelectedId : null;
       const nextSelectedTask = nextTasks.find((task) => task.id === validSelectedId);
 
       setTasks(nextTasks);
@@ -55,12 +56,14 @@ export function App() {
   const createNewTask = () => {
     setSelectedId(null);
     setDraft(createEmptyDraft());
+    setIsFormOpen(true);
   };
 
   const selectTask = (id: string) => {
     const task = tasks.find((current) => current.id === id);
     setSelectedId(id);
     setDraft(task ? taskToDraft(task) : createEmptyDraft());
+    setIsFormOpen(true);
   };
 
   const saveTask = () => {
@@ -108,8 +111,10 @@ export function App() {
       />
       <TaskForm
         draft={draft}
+        isOpen={isFormOpen}
         selectedTask={selectedTask}
         onDraftChange={setDraft}
+        onToggleOpen={() => setIsFormOpen((current) => !current)}
         onSave={saveTask}
         onCancel={cancelEdit}
         onDelete={deleteTask}

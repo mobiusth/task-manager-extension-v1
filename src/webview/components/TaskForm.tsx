@@ -6,8 +6,10 @@ import { TagInput } from './TagInput';
 
 type TaskFormProps = {
   draft: TaskDraft;
+  isOpen: boolean;
   selectedTask: Task | undefined;
   onDraftChange(draft: TaskDraft): void;
+  onToggleOpen(): void;
   onSave(): void;
   onCancel(): void;
   onDelete(id: string): void;
@@ -20,7 +22,7 @@ const richFields: Array<{ key: RichField; label: string; guide: string }> = [
   { key: 'mails', label: '관련 메일', guide: '추적이 필요한 메일 스레드를 기록하세요. 예) 6/8, [xxx] 기능 구현 관련 건 메일' }
 ];
 
-export function TaskForm({ draft, selectedTask, onDraftChange, onSave, onCancel, onDelete }: TaskFormProps) {
+export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleOpen, onSave, onCancel, onDelete }: TaskFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
 
   const updateDraft = (changes: Partial<TaskDraft>) => {
@@ -34,7 +36,7 @@ export function TaskForm({ draft, selectedTask, onDraftChange, onSave, onCancel,
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key.toLowerCase() === 's') {
+      if (isOpen && event.ctrlKey && event.key.toLowerCase() === 's') {
         event.preventDefault();
         formRef.current?.requestSubmit();
       }
@@ -42,14 +44,24 @@ export function TaskForm({ draft, selectedTask, onDraftChange, onSave, onCancel,
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSave]);
+  }, [isOpen, onSave]);
 
   return (
-    <main className="main">
-      <div className="toolbar">
+    <main className={`main ${isOpen ? '' : 'collapsed'}`}>
+      <div className="toolbar form-toolbar">
         <h2>{selectedTask ? 'Task 수정' : '새 Task 작성'}</h2>
+        <button className="secondary" type="button" onClick={onToggleOpen}>
+          {isOpen ? '접기' : '열기'}
+        </button>
       </div>
 
+      {!isOpen ? (
+        <div className="collapsed-form-message">
+          {selectedTask ? '선택한 task를 수정하려면 열기를 누르세요.' : '새 task를 작성하려면 열기를 누르세요.'}
+        </div>
+      ) : null}
+
+      {isOpen ? (
       <form ref={formRef} onSubmit={submit}>
         <div className="form-grid">
           <label>
@@ -104,6 +116,7 @@ export function TaskForm({ draft, selectedTask, onDraftChange, onSave, onCancel,
           <button className="danger" type="button" disabled={!selectedTask} onClick={() => selectedTask && onDelete(selectedTask.id)}>삭제</button>
         </div>
       </form>
+      ) : null}
     </main>
   );
 }

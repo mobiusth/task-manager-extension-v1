@@ -41,79 +41,89 @@ type WebviewMessage =
   | { action: 'toggleTaskCompleted'; id: string; completed: boolean }
   | { action: 'openExternal'; url: string };
 
-const STORAGE_DIR = '.task-manager';
 const STORAGE_FILE = 'tasks.json';
+const LEGACY_WORKSPACE_STORAGE_DIR = '.task-manager';
+const TASK_MANAGER_VIEW_ID = 'taskManager.tasksView';
 
 export function activate(context: vscode.ExtensionContext) {
-  const disposable = vscode.commands.registerCommand('taskManager.open', async () => {
-    const workspaceFolder = getWorkspaceFolder();
-
-    if (!workspaceFolder) {
-      vscode.window.showErrorMessage('Task Manager는 워크스페이스 폴더를 열어야 사용할 수 있습니다.');
-      return;
+  const provider = new TaskManagerViewProvider(context);
+  const viewProvider = vscode.window.registerWebviewViewProvider(TASK_MANAGER_VIEW_ID, provider, {
+    webviewOptions: {
+      retainContextWhenHidden: true
     }
+  });
 
-    const repository = new TaskRepository(workspaceFolder.uri);
-    await repository.ensureInitialized();
+  const disposable = vscode.commands.registerCommand('taskManager.open', async () => {
+    await vscode.commands.executeCommand(`${TASK_MANAGER_VIEW_ID}.focus`);
+  });
 
-    const panel = vscode.window.createWebviewPanel(
-      'taskManager',
-      'Task Manager',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'out', 'webview')],
-        retainContextWhenHidden: true
-      }
+  context.subscriptions.push(viewProvider, disposable);
+}
+
+class TaskManagerViewProvider implements vscode.WebviewViewProvider {
+  constructor(private readonly context: vscode.ExtensionContext) {}
+
+  async resolveWebviewView(webviewView: vscode.WebviewView): Promise<void> {
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'out', 'webview')]
+    };
+
+    const repository = new TaskRepository(
+      this.context.globalStorageUri,
+      this.context.extensionUri,
+      getWorkspaceFolder()?.uri
     );
-
-    panel.webview.html = await getWebviewHtml(panel.webview, context.extensionUri);
+    await repository.ensureInitialized();
+    webviewView.webview.html = await getWebviewHtml(webviewView.webview, this.context.extensionUri);
 
     const postTasks = async (selectedId?: string) => {
       const tasks = await repository.readTasks();
-      await panel.webview.postMessage({ action: 'tasksLoaded', tasks, selectedId });
+      await webviewView.webview.postMessage({ action: 'tasksLoaded', tasks, selectedId });
     };
 
-    panel.webview.onDidReceiveMessage(
-      async (message: WebviewMessage) => {
-        try {
-          switch (message.action) {
-            case 'loadTasks':
-              await postTasks();
-              break;
-            case 'createTask': {
-              const created = await repository.createTask(message.task);
-              await postTasks(created.id);
-              break;
-            }
-            case 'updateTask': {
-              const updated = await repository.updateTask(message.task);
-              await postTasks(updated.id);
-              break;
-            }
-            case 'deleteTask':
-              await repository.deleteTask(message.id);
-              await postTasks();
-              break;
-            case 'toggleTaskCompleted':
-              await repository.toggleCompleted(message.id, message.completed);
-              await postTasks(message.id);
-              break;
-            case 'openExternal':
-              await openExternalUrl(message.url);
-              break;
-          }
-        } catch (error) {
-          const messageText = error instanceof Error ? error.message : String(error);
-          vscode.window.showErrorMessage(`Task Manager 오류: ${messageText}`);
-        }
-      },
-      undefined,
-      context.subscriptions
-    );
-  });
+    webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
+      try {
+        await handleWebviewMessage(message, repository, postTasks);
+      } catch (error) {
+        const messageText = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(`Task Manager 오류: ${messageText}`);
+      }
+    });
+  }
+}
 
-  context.subscriptions.push(disposable);
+async function handleWebviewMessage(
+  message: WebviewMessage,
+  repository: TaskRepository,
+  postTasks: (selectedId?: string) => Promise<void>
+): Promise<void> {
+  switch (message.action) {
+    case 'loadTasks':
+      await postTasks();
+      break;
+    case 'createTask': {
+      const created = await repository.createTask(message.task);
+      await postTasks(created.id);
+      break;
+    }
+    case 'updateTask': {
+      const updated = await repository.updateTask(message.task);
+      await postTasks(updated.id);
+      break;
+    }
+    case 'deleteTask':
+      await repository.deleteTask(message.id);
+      await postTasks();
+      break;
+    case 'toggleTaskCompleted':
+      await repository.toggleCompleted(message.id, message.completed);
+      await postTasks(message.id);
+      break;
+    case 'openExternal':
+      await openExternalUrl(message.url);
+      break;
+  }
 }
 
 async function openExternalUrl(url: string): Promise<void> {
@@ -132,14 +142,19 @@ function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
 }
 
 class TaskRepository {
-  constructor(private readonly workspaceUri: vscode.Uri) {}
+  constructor(
+    private readonly storageUri: vscode.Uri,
+    private readonly extensionUri: vscode.Uri,
+    private readonly legacyWorkspaceUri?: vscode.Uri
+  ) {}
 
   async ensureInitialized(): Promise<void> {
     try {
       await vscode.workspace.fs.stat(this.storageFileUri);
     } catch {
-      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.workspaceUri, STORAGE_DIR));
-      await this.writeTasks([await this.createSampleTask()]);
+      await vscode.workspace.fs.createDirectory(this.storageUri);
+      const migratedTasks = await this.readLegacyWorkspaceTasks();
+      await this.writeTasks(migratedTasks.length > 0 ? migratedTasks : [await this.createSampleTask()]);
     }
   }
 
@@ -196,7 +211,7 @@ class TaskRepository {
   }
 
   private async writeTasks(tasks: Task[]): Promise<void> {
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.workspaceUri, STORAGE_DIR));
+    await vscode.workspace.fs.createDirectory(this.storageUri);
     const data = Buffer.from(JSON.stringify(tasks, null, 2), 'utf8');
     await vscode.workspace.fs.writeFile(this.storageFileUri, data);
   }
@@ -225,15 +240,30 @@ class TaskRepository {
 
   private async readTaskExample(): Promise<Partial<TaskDraft>> {
     try {
-      const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.workspaceUri, 'task_examples'));
+      const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.extensionUri, 'task_examples'));
       return parseTaskExample(Buffer.from(data).toString('utf8'));
     } catch {
       return {};
     }
   }
 
+  private async readLegacyWorkspaceTasks(): Promise<Task[]> {
+    if (!this.legacyWorkspaceUri) {
+      return [];
+    }
+
+    try {
+      const legacyStorageUri = vscode.Uri.joinPath(this.legacyWorkspaceUri, LEGACY_WORKSPACE_STORAGE_DIR, STORAGE_FILE);
+      const data = await vscode.workspace.fs.readFile(legacyStorageUri);
+      const parsed = JSON.parse(Buffer.from(data).toString('utf8')) as Partial<Task>[];
+      return Array.isArray(parsed) ? parsed.map(normalizeStoredTask) : [];
+    } catch {
+      return [];
+    }
+  }
+
   private get storageFileUri(): vscode.Uri {
-    return vscode.Uri.joinPath(this.workspaceUri, STORAGE_DIR, STORAGE_FILE);
+    return vscode.Uri.joinPath(this.storageUri, STORAGE_FILE);
   }
 }
 

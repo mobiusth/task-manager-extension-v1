@@ -56,6 +56,10 @@ button:disabled {
   overflow: auto;
 }
 
+.main.collapsed {
+  align-self: start;
+}
+
 .toolbar,
 .form-actions {
   display: flex;
@@ -66,6 +70,18 @@ button:disabled {
 
 .toolbar {
   justify-content: space-between;
+}
+
+.form-toolbar {
+  margin-bottom: 10px;
+}
+
+.collapsed-form-message {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .filters {
