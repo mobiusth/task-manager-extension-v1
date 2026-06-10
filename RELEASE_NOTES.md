@@ -1,5 +1,18 @@
 # Release Notes
 
+## 0.9.3
+
+### Documentation
+
+- `skill.md`에 Git workflow 섹션을 추가했습니다.
+- 신규 작업 시작 전 `main` 최신화, 작업 상태 확인, branch 생성 절차를 정리했습니다.
+- `git add *` 대신 `git add -A` 사용을 권장하도록 문서화했습니다.
+- 신규 branch에서 `main`으로 직접 push하지 않고 branch push 후 PR/merge를 사용하는 흐름을 명시했습니다.
+
+### Build
+
+- VSIX 출력 파일명을 `task-manager-extension-v1-0.9.3.vsix`로 갱신했습니다.
+
 ## 0.9.2
 
 ### Added

@@ -2,7 +2,7 @@
 
 ## 버전
 
-현재 정리 버전은 `0.9.2`입니다.
+현재 정리 버전은 `0.9.3`입니다.
 
 ## 목표
 
@@ -86,6 +86,56 @@ npm run compile
 - 내부 저장 파일이 없고 기존 워크스페이스 `.task-manager/tasks.json`이 있으면 최초 1회 가져옵니다.
 - 저장 파일이 없으면 extension에 포함된 `task_examples` 내용을 기반으로 초기 샘플 task를 생성합니다.
 - 기존 plain string text 데이터는 로드 시 Tiptap JSON 문서로 자동 변환합니다.
+
+## Git workflow
+
+릴리즈나 기능 변경은 다음 순서로 진행합니다.
+
+1. `main`을 최신 상태로 맞춘 뒤 신규 branch를 생성합니다.
+
+```bash
+git switch main
+git pull
+git switch -c release/0.9.x
+```
+
+2. 코드, `RELEASE_NOTES.md`, `README.md`, `skill.md`, version metadata를 수정합니다.
+3. 검증 명령을 실행합니다.
+
+```bash
+npm run compile
+npm run package:vsix
+```
+
+4. 변경 파일을 확인하고 stage합니다. `git add *` 대신 삭제/숨김 파일까지 반영되는 `git add -A`를 사용합니다.
+
+```bash
+git status --short
+git add -A
+```
+
+5. commit 메시지를 명확히 작성해서 commit합니다.
+
+```bash
+git commit -m "Release 0.9.x"
+```
+
+6. 신규 branch를 remote에 push합니다. 신규 branch에서 `main`으로 직접 push하지 않습니다.
+
+```bash
+git push -u origin release/0.9.x
+```
+
+7. PR을 생성해 review 후 `main`으로 merge합니다. 직접 merge가 필요한 로컬 작업이라면 `main`으로 이동 후 merge합니다.
+
+```bash
+git switch main
+git pull
+git merge --no-ff release/0.9.x
+git push origin main
+```
+
+주의: `git push origin branch-name:main`처럼 신규 branch에서 main으로 직접 push하는 방식은 review와 보호 규칙을 우회할 수 있으므로 사용하지 않습니다.
 
 ## 교육용 TODO 해결 내용
 

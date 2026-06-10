@@ -2,7 +2,7 @@
 
 VS Code Webview 기반 로컬 task 관리 확장입니다.
 
-현재 정리 버전: `0.9.2`
+현재 정리 버전: `0.9.3`
 
 ## 기능
 
@@ -52,13 +52,13 @@ npm run package:vsix
 생성된 파일:
 
 ```text
-task-manager-extension-v1-0.9.2.vsix
+task-manager-extension-v1-0.9.3.vsix
 ```
 
 로컬 설치:
 
 ```bash
-code --install-extension task-manager-extension-v1-0.9.2.vsix
+code --install-extension task-manager-extension-v1-0.9.3.vsix
 ```
 
 Marketplace 배포는 `package.json`의 `publisher`를 실제 VS Code Marketplace publisher ID로 바꾼 뒤 Personal Access Token으로 로그인하고 실행합니다.
@@ -95,6 +95,12 @@ npm run publish:marketplace
 - 기존 워크스페이스 `.task-manager/tasks.json` 최초 1회 import 지원
 - Task Manager open 시 아무 task도 선택되지 않은 상태로 시작
 - task 작성/수정 패널 접기/열기 지원 및 기본 접힘 상태 적용
+
+## Version 0.9.3
+
+- `skill.md`에 안전한 Git workflow 문서화
+- 신규 작업 시작 전 `main` 최신화, 작업 상태 확인, branch 생성 절차 정리
+- `git add -A`, branch push, PR/merge 중심의 릴리즈 흐름 정리
 
 ## 개발 구조
 
