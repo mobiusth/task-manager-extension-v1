@@ -1,3 +1,6 @@
+import { Extension } from '@tiptap/core';
+import { closeHistory } from '@tiptap/pm/history';
+import { Plugin } from '@tiptap/pm/state';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -5,15 +8,53 @@ import { useEffect } from 'react';
 import type { RichTextContent } from '../types';
 import { emptyRichText } from '../richText';
 
+const wordBoundaryPattern = /[\s,.;:!?()[\]{}"'<>\-_/\\|]+$/;
+
 type RichTextEditorProps = {
   content: RichTextContent;
   onChange(content: RichTextContent): void;
   onReady?(editor: Editor | null): void;
 };
 
+const WordLevelHistory = Extension.create({
+  name: 'wordLevelHistory',
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        appendTransaction(transactions, oldState, newState) {
+          if (!transactions.some((transaction) => transaction.docChanged)) {
+            return null;
+          }
+
+          const diffStart = oldState.doc.content.findDiffStart(newState.doc.content);
+          const diffEnd = oldState.doc.content.findDiffEnd(newState.doc.content);
+          if (diffStart === null || !diffEnd) {
+            return null;
+          }
+
+          const insertedText = newState.doc.textBetween(diffStart, diffEnd.b, '\n', '\n');
+          if (!wordBoundaryPattern.test(insertedText)) {
+            return null;
+          }
+
+          return closeHistory(newState.tr);
+        }
+      })
+    ];
+  }
+});
+
 export function RichTextEditor({ content, onChange, onReady }: RichTextEditorProps) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit.configure({
+        history: {
+          newGroupDelay: 150
+        }
+      }),
+      WordLevelHistory
+    ],
     content: content || emptyRichText,
     editorProps: {
       attributes: {
