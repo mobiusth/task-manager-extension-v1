@@ -43,6 +43,8 @@ Task 목록은 왼쪽에 표시됩니다. 목록에서는 `Task Description`을 
 
 `Task 내용`은 개요, 진행상황, 관련 링크, 관련 메일 항목이 들어간 단일 rich editor입니다. `How to Write` 버튼에서 작성 예시를 볼 수 있고, 열린 도움말은 `Esc`로 닫을 수 있습니다.
 
+Rich editor의 undo/redo는 단어 단위에 가깝게 동작합니다. 빠르게 여러 단어를 입력해도 `Ctrl+Z`, `Ctrl+Y`, toolbar `Undo`/`Redo`가 공백, 줄바꿈, 문장부호 기준으로 최근 단어부터 단계적으로 되돌리거나 다시 적용합니다.
+
 ## Task 찾기와 필터링
 
 왼쪽 목록의 검색창은 Category, Task Description, tag, Task 내용을 대상으로 검색합니다.
@@ -81,6 +83,8 @@ Form/editor 단축키:
 | 단축키 | 동작 |
 | --- | --- |
 | `Ctrl+S` | 현재 task 저장 |
+| `Ctrl+Z` | Rich editor 입력을 단어 단위로 undo |
+| `Ctrl+Y`, `Shift+Ctrl+Z` | Rich editor 입력을 단어 단위로 redo |
 | `Shift+Tab` | task 수정 접기/열기 버튼에서 마지막 task로 이동 |
 | `Esc` | 열린 도움말 팝업 닫기 |
 

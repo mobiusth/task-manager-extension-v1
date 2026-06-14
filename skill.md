@@ -83,6 +83,7 @@ npm run compile
 - `How to Write` 작성 예시는 개요, 진행상황, 관련 링크, 관련 메일 아래에 bullet 예시를 보여줍니다.
 - 열린 도움말 팝업은 `Esc`로 닫을 수 있습니다.
 - rich editor는 bold, italic, heading, list, quote, inline code, undo, redo를 지원합니다.
+- rich editor의 undo/redo는 공백, 줄바꿈, 문장부호 기준의 단어 단위로 분리됩니다. `Ctrl+Z`, `Ctrl+Y`, toolbar `Undo`/`Redo`가 최근 단어부터 단계적으로 undo/redo합니다.
 - `저장` 버튼으로 생성 또는 수정을 완료합니다.
 - 목록의 체크박스로 완료 여부를 바꿉니다.
 - 왼쪽 목록에서 검색어와 category 버튼 필터로 task를 찾습니다.
@@ -124,6 +125,7 @@ git switch -c release/0.9.x
 ```
 
 2. 코드, `RELEASE_NOTES.md`, `README.md`, `skill.md`, version metadata를 수정합니다.
+   작업이 완료된 후에는 `README.md`, `RELEASE_NOTES.md`, `skill.md` 파일을 수정합니다.
 3. 검증 명령을 실행합니다.
 
 ```bash
@@ -178,3 +180,4 @@ git push origin main
 - `Alt+Shift+N` 새 task 생성, `Alt+Home` 첫 task 이동, `Alt+Up/Down` task 접기/펼치기, task item `Tab` 이동, `E`/`Enter` 편집 진입, 유연한 날짜 입력 정규화를 추가했습니다.
 - React/Vite Webview 앱으로 UI를 분리했습니다.
 - Tiptap 기반 rich editor와 Tiptap JSON 저장 방식을 추가했습니다.
+- Rich editor undo/redo를 Tiptap/ProseMirror history boundary로 보완해 공백, 줄바꿈, 문장부호 기준의 단어 단위로 분리했습니다.

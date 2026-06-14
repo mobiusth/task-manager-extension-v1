@@ -25,6 +25,7 @@
 - Task 내용 작성 예시는 `How to Write` 팝업으로 분리했습니다.
 - `How to Write` 작성 예시를 항목별 bullet 구조로 정리했습니다.
 - 도움말 팝업은 `Esc`로 닫을 수 있습니다.
+- Rich editor undo/redo를 공백, 줄바꿈, 문장부호 기준의 단어 단위로 분리했습니다. `Ctrl+Z`, `Ctrl+Y`, toolbar `Undo`/`Redo`가 최근 단어부터 단계적으로 undo/redo합니다.
 - 기존 `overview`, `progress`, `links`, `mails` 저장 데이터는 로드 시 단일 `content` bullet 문서로 자동 변환됩니다.
 
 ### Documentation
