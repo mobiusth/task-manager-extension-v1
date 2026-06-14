@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.9.4
 
 ### Added
 
@@ -26,6 +26,15 @@
 - `How to Write` 작성 예시를 항목별 bullet 구조로 정리했습니다.
 - 도움말 팝업은 `Esc`로 닫을 수 있습니다.
 - 기존 `overview`, `progress`, `links`, `mails` 저장 데이터는 로드 시 단일 `content` bullet 문서로 자동 변환됩니다.
+
+### Documentation
+
+- README를 기능 나열 중심에서 빠른 시작, 사용 흐름, 단축키, 저장 정책 중심으로 재구성했습니다.
+
+### Build
+
+- 앱 버전을 `0.9.4`로 올렸습니다.
+- VSIX 출력 파일명을 `task-manager-extension-v1-0.9.4.vsix`로 갱신했습니다.
 
 ## 0.9.3
 
