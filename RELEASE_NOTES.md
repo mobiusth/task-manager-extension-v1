@@ -2,11 +2,29 @@
 
 ## Unreleased
 
+### Added
+
+- `Alt+Shift+N`으로 새 task 작성 폼을 여는 단축키를 추가했습니다.
+- `Alt+Home`으로 현재 검색/필터 결과의 첫 번째 task로 이동할 수 있습니다.
+- 새 task 작성 시 Category 입력칸으로 자동 포커스됩니다.
+- `새 Task` 옆에 Webview 단축키 목록을 여는 `단축키` 버튼을 추가했습니다.
+- Task Description 필드를 추가했습니다.
+- task item에 포커스가 있을 때 `Alt+Up`, `Alt+Down`으로 해당 task를 접거나 펼칠 수 있습니다.
+- task item에 포커스가 있을 때 `Tab`, `Shift+Tab`으로 다음/이전 task를 선택할 수 있습니다.
+- 마지막 task item에서 `Tab`을 누르면 task 수정 Category 입력칸으로 이동합니다.
+- task 수정 접기/열기 버튼에서 `Shift+Tab`을 누르면 현재 검색/필터 결과의 마지막 task로 이동합니다.
+- task item에 포커스가 있을 때 `E` 또는 `Enter`로 task 수정의 Task 내용 editor로 이동할 수 있습니다.
+- 날짜 입력에서 `6/14`, `6-14`, `06/14`, `06-14`, `26/05/14`, `2026-06-14` 형식을 `YYYY-MM-DD`로 자동 정규화합니다.
+
 ### Changed
 
 - task 작성 영역을 개요, 진행상황, 관련 링크, 관련 메일 4개 rich editor에서 단일 `Task 내용` rich editor로 통합했습니다.
+- task 선택/포커스 시 상세 내용이 자동으로 펼쳐지지 않도록 변경했습니다.
+- 왼쪽 task 목록은 Task Description을 제목으로 표시하고 Category는 제목 앞 라벨로 표시합니다.
 - 새 task 작성 시 개요, 진행상황, 관련 링크, 관련 메일 항목명만 1단계 bullet 템플릿으로 미리 작성됩니다.
-- Task 내용 작성 예시는 `How to Use` 팝업으로 분리했습니다.
+- Task 내용 작성 예시는 `How to Write` 팝업으로 분리했습니다.
+- `How to Write` 작성 예시를 항목별 bullet 구조로 정리했습니다.
+- 도움말 팝업은 `Esc`로 닫을 수 있습니다.
 - 기존 `overview`, `progress`, `links`, `mails` 저장 데이터는 로드 시 단일 `content` bullet 문서로 자동 변환됩니다.
 
 ## 0.9.3

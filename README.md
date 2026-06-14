@@ -11,18 +11,21 @@ VS Code Webview 기반 로컬 task 관리 확장입니다.
 - task 완료 여부 체크
 - task 검색 및 category 필터링
 - category 버튼 다중 선택 필터 및 초기화
+- Task Description을 task 제목으로 표시하고 Category는 제목 앞에 표시
 - task tag 추가 및 표시
 - 왼쪽 task 목록에서 상세 내용 펼침/접힘
 - 왼쪽 task 목록 전체 펼침/전체 접음
-- task 선택 시 왼쪽 목록 상세 자동 펼침
 - Task Manager를 열면 아무 task도 선택하지 않은 상태로 시작
 - Task Manager를 열면 task 작성/수정 패널은 접힌 상태로 시작
 - 왼쪽 목록 상세에서 하이퍼링크 일반 클릭으로 외부 브라우저 열기
 - 새 task 작성 시 시작 시간 오늘 날짜 자동 입력
+- 새 task 작성 시 Category 입력칸으로 포커스 이동
+- `6/14`, `6-14`, `26/05/14`, `2026-06-14` 형식의 날짜 입력 자동 정규화
 - 우선순위 1~5 선택, 높은 우선순위가 왼쪽 목록 상단에 표시
 - Daily, Weekly, Monthly 반복 task 설정
 - 단일 rich editor에 개요, 진행상황, 관련 링크, 관련 메일 항목 템플릿 제공
-- `How to Use` 팝업으로 Task 내용 작성 예시 제공
+- `How to Write` 팝업으로 Task 내용 작성 예시 제공
+- `단축키` 버튼으로 Webview 단축키 목록 확인
 - React 기반 Webview UI
 - Tiptap rich editor로 Task 내용 편집
 - rich editor 내용은 Tiptap JSON으로 저장
@@ -73,6 +76,14 @@ npm run publish:marketplace
 
 | 단축키 | 동작 | 사용 위치 |
 | --- | --- | --- |
+| `Alt+Shift+N` | 새 task 작성 | Task Manager Webview |
+| `Alt+Home` | 첫 번째 task 선택 | Task Manager Webview |
+| `Alt+Up` | task 접기 | task item 포커스 |
+| `Alt+Down` | task 펼치기 | task item 포커스 |
+| `E` 또는 `Enter` | task 수정 및 Task 내용으로 이동 | task item 포커스 |
+| `Tab` | 다음 task 선택, 마지막 task에서는 Category로 이동 | task item 포커스 |
+| `Shift+Tab` | 이전 task 선택 | task item 포커스 |
+| `Shift+Tab` | 마지막 task로 이동 | task 수정 접기/열기 버튼 |
 | `Ctrl+S` | 현재 task 저장 | 새 task 작성, task 수정 |
 
 ## Version 0.9.0
@@ -82,7 +93,7 @@ npm run publish:marketplace
 - VS Code extension internal JSON 저장소
 - task CRUD, 완료 체크, 검색, category 다중 필터, tag chip 입력
 - 우선순위 정렬, Daily/Weekly/Monthly 반복 설정
-- 왼쪽 목록 상세 펼침/접힘, 자동 펼침, 일반 클릭 링크 열기
+- 왼쪽 목록 상세 펼침/접힘, 일반 클릭 링크 열기
 
 ## Version 0.9.1
 
@@ -107,8 +118,20 @@ npm run publish:marketplace
 
 - task 작성 영역을 개요, 진행상황, 관련 링크, 관련 메일 4개 editor에서 단일 `Task 내용` editor로 통합
 - 새 task 기본 내용을 항목명만 있는 1단계 bullet 템플릿으로 제공
-- Task 내용 작성 예시는 `How to Use` 팝업으로 분리
+- Task 내용 작성 예시는 `How to Write` 팝업으로 분리
+- `How to Write` 팝업의 작성 예시를 항목별 bullet 구조로 정리
+- 도움말 팝업은 `Esc`로 닫기 지원
+- `새 Task` 옆에 `단축키` 도움말 버튼 추가
 - 기존 저장 데이터의 4개 rich field는 로드 시 단일 `content` 필드로 자동 변환
+- Task Description 필드를 추가하고 왼쪽 목록 제목을 Category에서 Description 중심으로 변경
+- `Alt+Shift+N` 새 task 생성, `Alt+Up/Down` task 접기/펼치기 단축키 추가
+- `Alt+Home`으로 첫 번째 task 이동
+- 새 task 작성 시 Category 입력칸 자동 포커스
+- task item 포커스 상태에서 `Tab`/`Shift+Tab`으로 다음/이전 task 이동
+- 마지막 task에서 `Tab` 입력 시 task 수정 Category로 이동
+- task 수정 접기/열기 버튼에서 `Shift+Tab` 입력 시 마지막 task로 이동
+- task item 포커스 상태에서 `E` 또는 `Enter`로 task 수정의 Task 내용으로 이동
+- 날짜 입력은 `6/14`, `6-14`, `26/05/14`, `2026-06-14`를 `YYYY-MM-DD`로 자동 정규화
 
 ## 개발 구조
 

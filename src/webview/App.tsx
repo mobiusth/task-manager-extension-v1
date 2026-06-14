@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Task, TaskDraft, WebviewInboundMessage } from './types';
 import { createTaskContentTemplate, normalizeRichText } from './richText';
+import { todayDateInputValue } from './dateUtils';
 import { vscode } from './vscode';
 import { TaskList } from './components/TaskList';
-import { TaskForm } from './components/TaskForm';
+import { TaskForm, type TaskFormHandle } from './components/TaskForm';
 
 function createEmptyDraft(): TaskDraft {
   return {
     category: '',
+    description: '',
     startDate: todayDateInputValue(),
     expectedEndDate: '',
     priority: 3,
@@ -23,7 +25,10 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<TaskDraft>(createEmptyDraft);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formFocusTarget, setFormFocusTarget] = useState<'category' | 'content' | null>(null);
+  const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
   const [status, setStatus] = useState('');
+  const taskFormRef = useRef<TaskFormHandle>(null);
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedId), [selectedId, tasks]);
 
@@ -54,6 +59,7 @@ export function App() {
     setSelectedId(null);
     setDraft(createEmptyDraft());
     setIsFormOpen(true);
+    setFormFocusTarget('category');
   };
 
   const selectTask = (id: string) => {
@@ -61,6 +67,42 @@ export function App() {
     setSelectedId(id);
     setDraft(task ? taskToDraft(task) : createEmptyDraft());
     setIsFormOpen(true);
+  };
+
+  const focusTaskCategory = (id: string) => {
+    selectTask(id);
+    setFormFocusTarget('category');
+  };
+
+  const editTaskContent = (id: string) => {
+    selectTask(id);
+    setFormFocusTarget('content');
+  };
+
+  const focusLastVisibleTask = () => {
+    const lastTaskId = visibleTaskIds[visibleTaskIds.length - 1];
+    if (!lastTaskId) {
+      return;
+    }
+
+    selectTask(lastTaskId);
+    window.requestAnimationFrame(() => {
+      const element = document.querySelector<HTMLElement>(`[data-task-id="${lastTaskId}"]`);
+      element?.focus();
+    });
+  };
+
+  const focusFirstVisibleTask = () => {
+    const firstTaskId = visibleTaskIds[0];
+    if (!firstTaskId) {
+      return;
+    }
+
+    selectTask(firstTaskId);
+    window.requestAnimationFrame(() => {
+      const element = document.querySelector<HTMLElement>(`[data-task-id="${firstTaskId}"]`);
+      element?.focus();
+    });
   };
 
   const saveTask = () => {
@@ -96,6 +138,28 @@ export function App() {
     window.setTimeout(() => setStatus(''), 1800);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing) {
+        return;
+      }
+
+      if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        createNewTask();
+        return;
+      }
+
+      if (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === 'Home') {
+        event.preventDefault();
+        focusFirstVisibleTask();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [visibleTaskIds, tasks]);
+
   return (
     <div className="app">
       <TaskList
@@ -105,8 +169,12 @@ export function App() {
         onCreate={createNewTask}
         onDelete={deleteTask}
         onToggleCompleted={toggleCompleted}
+        onFocusTaskCategory={focusTaskCategory}
+        onEditTaskContent={editTaskContent}
+        onVisibleTaskIdsChange={setVisibleTaskIds}
       />
       <TaskForm
+        ref={taskFormRef}
         draft={draft}
         isOpen={isFormOpen}
         selectedTask={selectedTask}
@@ -115,23 +183,19 @@ export function App() {
         onSave={saveTask}
         onCancel={cancelEdit}
         onDelete={deleteTask}
+        focusTarget={formFocusTarget}
+        onFocusHandled={() => setFormFocusTarget(null)}
+        onFocusLastTask={focusLastVisibleTask}
       />
       <div className="status" role="status">{status}</div>
     </div>
   );
 }
 
-function todayDateInputValue(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function normalizeTask(task: Task): Task {
   return {
     ...task,
+    description: task.description || task.category || '',
     priority: normalizePriority(task.priority),
     schedule: normalizeSchedule(task.schedule),
     tags: task.tags || [],
@@ -142,6 +206,7 @@ function normalizeTask(task: Task): Task {
 function taskToDraft(task: Task): TaskDraft {
   return {
     category: task.category,
+    description: task.description || task.category || '',
     startDate: task.startDate,
     expectedEndDate: task.expectedEndDate,
     priority: normalizePriority(task.priority),

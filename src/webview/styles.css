@@ -72,6 +72,13 @@ button:disabled {
   justify-content: space-between;
 }
 
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .form-toolbar {
   margin-bottom: 10px;
 }
@@ -184,6 +191,13 @@ select {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .tag-input-label {
@@ -416,6 +430,25 @@ select {
   gap: 6px;
 }
 
+.category-prefix {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 42%;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active .category-prefix {
+  color: inherit;
+  opacity: 0.86;
+}
+
 .priority-badge {
   flex: 0 0 auto;
   border-radius: 999px;
@@ -587,6 +620,34 @@ select {
 
 .help-list li {
   margin-bottom: 8px;
+}
+
+.help-list ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.shortcut-list div {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.shortcut-list dt {
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.shortcut-list dd {
+  margin: 0;
+  color: var(--muted);
 }
 
 @media (max-width: 900px) {

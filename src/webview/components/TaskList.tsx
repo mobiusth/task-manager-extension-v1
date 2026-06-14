@@ -9,12 +9,26 @@ type TaskListProps = {
   onCreate(): void;
   onDelete(id: string): void;
   onToggleCompleted(id: string, completed: boolean): void;
+  onFocusTaskCategory(id: string): void;
+  onEditTaskContent(id: string): void;
+  onVisibleTaskIdsChange(ids: string[]): void;
 };
 
-export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onToggleCompleted }: TaskListProps) {
+export function TaskList({
+  tasks,
+  selectedId,
+  onSelect,
+  onCreate,
+  onDelete,
+  onToggleCompleted,
+  onFocusTaskCategory,
+  onEditTaskContent,
+  onVisibleTaskIdsChange
+}: TaskListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false);
 
   const categories = useMemo(
     () => Array.from(new Set(tasks.map((task) => task.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
@@ -29,6 +43,7 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
         const matchesCategory = selectedCategories.size === 0 || selectedCategories.has(task.category);
         const searchable = [
           task.category,
+          task.description,
           task.schedule,
           `priority ${task.priority}`,
           ...(task.tags || []),
@@ -36,8 +51,28 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
         ].join(' ').toLowerCase();
         return matchesCategory && (!query || searchable.includes(query));
       })
-      .sort((a, b) => b.priority - a.priority || a.category.localeCompare(b.category) || a.startDate.localeCompare(b.startDate));
+      .sort((a, b) => b.priority - a.priority || a.description.localeCompare(b.description) || a.startDate.localeCompare(b.startDate));
   }, [searchQuery, selectedCategories, tasks]);
+
+  useEffect(() => {
+    onVisibleTaskIdsChange(visibleTasks.map((task) => task.id));
+  }, [onVisibleTaskIdsChange, visibleTasks]);
+
+  useEffect(() => {
+    if (!isShortcutHelpOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsShortcutHelpOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isShortcutHelpOpen]);
 
   const toggleCategory = (category: string) => {
     setSelectedCategories((current) => {
@@ -71,29 +106,52 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
     setExpandedIds(new Set());
   };
 
-  const selectAndExpand = (id: string) => {
+  const selectTask = (id: string) => {
     onSelect(id);
-    setExpandedIds((current) => new Set(current).add(id));
   };
 
-  useEffect(() => {
-    if (!selectedId) {
-      return;
+  const focusTask = (id: string) => {
+    window.requestAnimationFrame(() => {
+      const element = document.querySelector<HTMLElement>(`[data-task-id="${id}"]`);
+      element?.focus();
+    });
+  };
+
+  const selectAdjacentVisibleTask = (currentIndex: number, direction: 'previous' | 'next'): boolean => {
+    const nextIndex = direction === 'next'
+      ? Math.min(currentIndex + 1, visibleTasks.length - 1)
+      : Math.max(currentIndex - 1, 0);
+
+    const nextTask = visibleTasks[nextIndex];
+    if (!nextTask || nextIndex === currentIndex) {
+      return false;
     }
 
+    selectTask(nextTask.id);
+    focusTask(nextTask.id);
+    return true;
+  };
+
+  const setExpanded = (id: string, expanded: boolean) => {
     setExpandedIds((current) => {
-      if (current.has(selectedId)) {
-        return current;
+      const next = new Set(current);
+      if (expanded) {
+        next.add(id);
+      } else {
+        next.delete(id);
       }
-      return new Set(current).add(selectedId);
+      return next;
     });
-  }, [selectedId]);
+  };
 
   return (
     <aside className="sidebar">
       <div className="toolbar">
         <h1>Task Manager</h1>
-        <button className="primary" type="button" onClick={onCreate}>새 Task</button>
+        <div className="toolbar-actions">
+          <button className="secondary" type="button" onClick={() => setIsShortcutHelpOpen(true)}>단축키</button>
+          <button className="primary" type="button" onClick={onCreate}>새 Task</button>
+        </div>
       </div>
 
       <div className="filters">
@@ -132,17 +190,43 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
       <div className="task-list">
         {visibleTasks.length === 0 ? (
           <div className="empty">{tasks.length === 0 ? '등록된 task가 없습니다.' : '조건에 맞는 task가 없습니다.'}</div>
-        ) : visibleTasks.map((task) => (
+        ) : visibleTasks.map((task, index) => (
           <div
             key={task.id}
+            data-task-id={task.id}
             className={`task-item ${task.id === selectedId ? 'active' : ''}`}
             role="button"
             tabIndex={0}
-            onClick={() => selectAndExpand(task.id)}
+            onClick={() => selectTask(task.id)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
+              if (event.nativeEvent.isComposing) {
+                return;
+              }
+
+              if (event.key === 'Enter' || (!event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'e')) {
                 event.preventDefault();
-                selectAndExpand(task.id);
+                onEditTaskContent(task.id);
+              }
+              if (event.key === ' ') {
+                event.preventDefault();
+                selectTask(task.id);
+              }
+              if (event.key === 'Tab') {
+                const moved = selectAdjacentVisibleTask(index, event.shiftKey ? 'previous' : 'next');
+                if (moved) {
+                  event.preventDefault();
+                } else if (!event.shiftKey && index === visibleTasks.length - 1) {
+                  event.preventDefault();
+                  onFocusTaskCategory(task.id);
+                }
+              }
+              if (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowUp') {
+                event.preventDefault();
+                setExpanded(task.id, false);
+              }
+              if (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowDown') {
+                event.preventDefault();
+                setExpanded(task.id, true);
               }
             }}
           >
@@ -166,7 +250,8 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
             </button>
             <div className="task-summary">
               <div className="task-title-row">
-                <div className="task-title">{task.category || '(category 없음)'}</div>
+                <span className="category-prefix">{task.category || 'category 없음'}</span>
+                <div className="task-title">{task.description || '(description 없음)'}</div>
                 <span className="priority-badge">P{task.priority}</span>
               </div>
               <div className="task-meta">{[task.startDate, task.expectedEndDate].filter(Boolean).join(' ~ ')}</div>
@@ -195,6 +280,28 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
           </div>
         ))}
       </div>
+
+      {isShortcutHelpOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsShortcutHelpOpen(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="shortcut-help-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="shortcut-help-title">단축키</h3>
+              <button className="icon-button" type="button" aria-label="닫기" onClick={() => setIsShortcutHelpOpen(false)}>x</button>
+            </div>
+            <dl className="shortcut-list">
+              <div><dt>Alt+Shift+N</dt><dd>새 task 작성</dd></div>
+              <div><dt>Alt+Home</dt><dd>첫 번째 task 선택</dd></div>
+              <div><dt>Alt+Up</dt><dd>task 접기</dd></div>
+              <div><dt>Alt+Down</dt><dd>task 펼치기</dd></div>
+              <div><dt>E 또는 Enter</dt><dd>task 수정 및 Task 내용으로 이동</dd></div>
+              <div><dt>Tab</dt><dd>다음 task 선택, 마지막 task에서는 Category로 이동</dd></div>
+              <div><dt>Shift+Tab</dt><dd>이전 task 선택 또는 task 수정에서 마지막 task로 이동</dd></div>
+              <div><dt>Ctrl+S</dt><dd>현재 task 저장</dd></div>
+              <div><dt>Esc</dt><dd>열린 도움말 닫기</dd></div>
+            </dl>
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }

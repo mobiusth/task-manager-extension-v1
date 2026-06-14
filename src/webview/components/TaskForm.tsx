@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import type { Editor } from '@tiptap/react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type FormEvent } from 'react';
 import type { Task, TaskDraft } from '../types';
 import { RichTextEditor } from './RichTextEditor';
 import { TagInput } from './TagInput';
+import { DateInput } from './DateInput';
 
 type TaskFormProps = {
   draft: TaskDraft;
@@ -12,10 +14,23 @@ type TaskFormProps = {
   onSave(): void;
   onCancel(): void;
   onDelete(id: string): void;
+  focusTarget: 'category' | 'content' | null;
+  onFocusHandled(): void;
+  onFocusLastTask(): void;
 };
 
-export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleOpen, onSave, onCancel, onDelete }: TaskFormProps) {
+export type TaskFormHandle = {
+  focusCategory(): void;
+  focusContent(): void;
+};
+
+export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskForm(
+  { draft, isOpen, selectedTask, onDraftChange, onToggleOpen, onSave, onCancel, onDelete, focusTarget, onFocusHandled, onFocusLastTask },
+  ref
+) {
   const formRef = useRef<HTMLFormElement>(null);
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+  const contentEditorRef = useRef<Editor | null>(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const updateDraft = (changes: Partial<TaskDraft>) => {
@@ -25,6 +40,20 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
   const submit = (event: FormEvent) => {
     event.preventDefault();
     onSave();
+  };
+
+  const focusCategory = () => {
+    window.requestAnimationFrame(() => categoryInputRef.current?.focus());
+  };
+
+  const focusContent = (): boolean => {
+    const editor = contentEditorRef.current;
+    if (!editor) {
+      return false;
+    }
+
+    window.requestAnimationFrame(() => editor.commands.focus('end'));
+    return true;
   };
 
   useEffect(() => {
@@ -39,11 +68,62 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onSave]);
 
+  useImperativeHandle(ref, () => ({
+    focusCategory() {
+      focusCategory();
+    },
+    focusContent() {
+      focusContent();
+    }
+  }), []);
+
+  useEffect(() => {
+    if (!isOpen || !focusTarget) {
+      return;
+    }
+
+    if (focusTarget === 'category') {
+      focusCategory();
+      onFocusHandled();
+      return;
+    }
+
+    if (focusContent()) {
+      onFocusHandled();
+    }
+  }, [focusTarget, isOpen, onFocusHandled]);
+
+  useEffect(() => {
+    if (!isHelpOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsHelpOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isHelpOpen]);
+
   return (
     <main className={`main ${isOpen ? '' : 'collapsed'}`}>
       <div className="toolbar form-toolbar">
         <h2>{selectedTask ? 'Task 수정' : '새 Task 작성'}</h2>
-        <button className="secondary" type="button" onClick={onToggleOpen}>
+        <button
+          className="secondary"
+          type="button"
+          onClick={onToggleOpen}
+          onKeyDown={(event) => {
+            if (event.key === 'Tab' && event.shiftKey) {
+              event.preventDefault();
+              onFocusLastTask();
+            }
+          }}
+        >
           {isOpen ? '접기' : '열기'}
         </button>
       </div>
@@ -58,17 +138,20 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
       <form ref={formRef} onSubmit={submit}>
         <div className="form-grid">
           <label>
+            Task Description
+            <input value={draft.description} required onChange={(event) => updateDraft({ description: event.target.value })} />
+          </label>
+          <label>
             Category
-            <input value={draft.category} required onChange={(event) => updateDraft({ category: event.target.value })} />
+            <input ref={categoryInputRef} value={draft.category} required onChange={(event) => updateDraft({ category: event.target.value })} />
           </label>
-          <label>
-            시작 시간
-            <input type="date" value={draft.startDate} onChange={(event) => updateDraft({ startDate: event.target.value })} />
-          </label>
-          <label>
-            예상 완료 시간
-            <input type="date" value={draft.expectedEndDate} onChange={(event) => updateDraft({ expectedEndDate: event.target.value })} />
-          </label>
+          <DateInput label="시작 시간" value={draft.startDate} onChange={(startDate) => updateDraft({ startDate })} />
+          <DateInput
+            label="예상 완료 시간"
+            value={draft.expectedEndDate}
+            baseDate={draft.startDate}
+            onChange={(expectedEndDate) => updateDraft({ expectedEndDate })}
+          />
           <label>
             우선순위
             <select value={draft.priority} onChange={(event) => updateDraft({ priority: Number(event.target.value) as TaskDraft['priority'] })}>
@@ -98,14 +181,30 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
                 <div className="field-label">Task 내용</div>
                 <p className="field-guide">개요, 진행상황, 관련 링크, 관련 메일을 작성하세요.</p>
               </div>
-              <button className="secondary" type="button" onClick={() => setIsHelpOpen(true)}>
-                How to Use
+              <button
+                className="secondary"
+                type="button"
+                onClick={() => setIsHelpOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Tab' && !event.shiftKey && focusContent()) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                How to Write
               </button>
             </div>
             <RichTextEditor
               key={`${selectedTask?.id || 'new'}-content`}
               content={draft.content}
               onChange={(content) => updateDraft({ content })}
+              onReady={(editor) => {
+                contentEditorRef.current = editor;
+                if (editor && focusTarget === 'content' && isOpen) {
+                  window.requestAnimationFrame(() => editor.commands.focus('end'));
+                  onFocusHandled();
+                }
+              }}
             />
           </div>
         </div>
@@ -126,14 +225,35 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
               <button className="icon-button" type="button" aria-label="닫기" onClick={() => setIsHelpOpen(false)}>x</button>
             </div>
             <ul className="help-list">
-              <li><strong>개요</strong> - 고객 요청으로 UEM v2.0 배포 안정성을 개선한다.</li>
-              <li><strong>진행상황</strong> - 6/8, 기능 A 구현 완료. 6/9, QA 시나리오 작성 중.</li>
-              <li><strong>관련 링크</strong> - https://confluence.example.com/uem-v2</li>
-              <li><strong>관련 메일</strong> - 6/8, [UEM] v2.0 배포 일정 확인 메일</li>
+              <li>
+                <strong>개요</strong>
+                <ul>
+                  <li>고객 요청으로 UEM v2.0 배포 안정성을 개선한다.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>진행상황</strong>
+                <ul>
+                  <li>6/8, 기능 A 구현 완료.</li>
+                  <li>6/9, QA 시나리오 작성 중.</li>
+                </ul>
+              </li>
+              <li>
+                <strong>관련 링크</strong>
+                <ul>
+                  <li>https://confluence.example.com/uem-v2</li>
+                </ul>
+              </li>
+              <li>
+                <strong>관련 메일</strong>
+                <ul>
+                  <li>6/8, [UEM] v2.0 배포 일정 확인 메일</li>
+                </ul>
+              </li>
             </ul>
           </div>
         </div>
       ) : null}
     </main>
   );
-}
+});

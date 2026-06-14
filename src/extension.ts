@@ -16,6 +16,7 @@ type RichTextNode = {
 type Task = {
   id: string;
   category: string;
+  description: string;
   startDate: string;
   expectedEndDate: string;
   priority: number;
@@ -226,6 +227,7 @@ class TaskRepository {
     return {
       id: createId(),
       category: sample.category || 'UEM',
+      description: sample.description || sample.category || 'UEM v2.0 개발 및 배포',
       startDate: sample.startDate || '2026-06-10',
       expectedEndDate: sample.expectedEndDate || '2026-06-17',
       priority: sample.priority || 3,
@@ -270,6 +272,7 @@ class TaskRepository {
 function normalizeDraft(task: TaskDraft): TaskDraft {
   return {
     category: task.category.trim(),
+    description: task.description.trim(),
     startDate: task.startDate.trim(),
     expectedEndDate: task.expectedEndDate.trim(),
     priority: normalizePriority(task.priority),
@@ -286,6 +289,7 @@ function normalizeStoredTask(task: LegacyTask): Task {
   return {
     id: task.id || createId(),
     category: task.category?.trim() || '',
+    description: task.description?.trim() || task.category?.trim() || '',
     startDate: task.startDate?.trim() || '',
     expectedEndDate: task.expectedEndDate?.trim() || '',
     priority: normalizePriority(task.priority),
@@ -450,6 +454,7 @@ function parseTaskExample(text: string): Partial<TaskDraft> {
 
   return {
     category: first(sections.get('category')),
+    description: first(sections.get('Task Description')) || first(sections.get('description')) || first(sections.get('개요')),
     startDate: first(sections.get('시작 시간')),
     expectedEndDate: first(sections.get('예상 완료 시간')),
     content: createTaskContentFromSections([

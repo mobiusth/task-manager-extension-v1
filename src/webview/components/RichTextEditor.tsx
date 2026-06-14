@@ -1,4 +1,5 @@
 import { EditorContent, useEditor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect } from 'react';
 import type { RichTextContent } from '../types';
@@ -7,9 +8,10 @@ import { emptyRichText } from '../richText';
 type RichTextEditorProps = {
   content: RichTextContent;
   onChange(content: RichTextContent): void;
+  onReady?(editor: Editor | null): void;
 };
 
-export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, onReady }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [StarterKit],
     content: content || emptyRichText,
@@ -34,6 +36,11 @@ export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
       editor.commands.setContent(content || emptyRichText, false);
     }
   }, [content, editor]);
+
+  useEffect(() => {
+    onReady?.(editor);
+    return () => onReady?.(null);
+  }, [editor, onReady]);
 
   return (
     <section className="rich-editor">

@@ -17,6 +17,7 @@
 {
   "id": "고유 ID",
   "category": "UEM",
+  "description": "UEM v2.0 개발 및 배포",
   "startDate": "2026-06-10",
   "expectedEndDate": "2026-06-17",
   "priority": 3,
@@ -67,13 +68,20 @@ npm run compile
 ## 사용 흐름
 
 - `새 Task` 버튼으로 새 task 작성 폼을 열면 시작 시간은 오늘 날짜로 자동 입력됩니다.
-- category, 시작 시간, 예상 완료 시간, tag를 입력합니다.
+- 새 task 작성 폼이 열리면 Category 입력칸으로 포커스가 이동합니다.
+- `Alt+Shift+N`으로도 새 task 작성 폼을 열 수 있습니다.
+- Task Description, category, 시작 시간, 예상 완료 시간, tag를 입력합니다.
+- 왼쪽 목록의 task 제목은 Task Description을 사용하고, Category는 제목 앞에 작은 라벨로 표시됩니다.
+- 날짜는 `6/14`, `6-14`, `06/14`, `06-14`, `26/05/14`, `2026-06-14` 형식으로 입력할 수 있으며 blur 또는 Enter 시 `YYYY-MM-DD`로 정규화됩니다.
+- 월/일만 입력한 날짜는 기준 연도를 사용합니다. 시작 시간은 올해, 예상 완료 시간은 시작 시간이 있으면 시작 시간의 연도를 기준으로 해석합니다.
 - 우선순위는 1부터 5까지 선택하며 5가 가장 높고 1이 가장 낮습니다.
 - 반복 설정은 반복 없음, Daily, Weekly, Monthly 중 하나를 선택합니다.
 - tag는 입력 후 Enter를 눌러 chip 형태로 여러 개를 추가할 수 있습니다.
 - Task 내용은 하나의 Tiptap rich editor에서 작성합니다.
 - 새 task에는 개요, 진행상황, 관련 링크, 관련 메일 항목명이 1단계 bullet 템플릿으로 미리 작성됩니다.
-- Task 내용 작성 예시는 `How to Use` 버튼으로 팝업에서 확인합니다.
+- Task 내용 작성 예시는 `How to Write` 버튼으로 팝업에서 확인합니다.
+- `How to Write` 작성 예시는 개요, 진행상황, 관련 링크, 관련 메일 아래에 bullet 예시를 보여줍니다.
+- 열린 도움말 팝업은 `Esc`로 닫을 수 있습니다.
 - rich editor는 bold, italic, heading, list, quote, inline code, undo, redo를 지원합니다.
 - `저장` 버튼으로 생성 또는 수정을 완료합니다.
 - 목록의 체크박스로 완료 여부를 바꿉니다.
@@ -82,7 +90,14 @@ npm run compile
 - Task Manager를 처음 열면 아무 task도 선택하지 않은 상태로 시작합니다.
 - Task Manager를 처음 열면 task 작성/수정 패널은 접힌 상태입니다.
 - 왼쪽 목록의 펼침 버튼 또는 `전체 펼침`, `전체 접음`으로 Task 내용을 확인합니다.
-- 왼쪽 목록에서 task를 선택하면 해당 task 상세가 자동으로 펼쳐집니다.
+- 왼쪽 목록에서 task를 선택하거나 포커스해도 상세 내용은 자동으로 펼쳐지지 않습니다.
+- task item에 포커스가 있을 때 `Alt+Up`, `Alt+Down`으로 해당 task를 접거나 펼칠 수 있습니다.
+- `Alt+Home`으로 현재 검색/필터 결과의 첫 번째 task로 이동할 수 있습니다.
+- `새 Task` 옆 `단축키` 버튼으로 Webview 단축키 목록을 확인할 수 있습니다.
+- task item에 포커스가 있을 때 `Tab`, `Shift+Tab`으로 다음/이전 task로 이동할 수 있습니다.
+- 마지막 task item에서 `Tab`을 누르면 해당 task를 선택하고 task 수정 Category 입력칸으로 이동합니다.
+- task 수정 접기/열기 버튼에서 `Shift+Tab`을 누르면 현재 검색/필터 결과의 마지막 task로 이동합니다.
+- task item에 포커스가 있을 때 `E` 또는 `Enter`를 누르면 해당 task를 수정하면서 Task 내용 editor로 이동합니다.
 - 새 task 또는 task 수정 중 `Ctrl+S`로 저장할 수 있습니다.
 - 왼쪽 목록 상세의 URL 또는 Markdown 링크는 일반 클릭으로 외부 브라우저에서 열립니다.
 - 목록 또는 상세 화면의 삭제 버튼으로 task를 삭제합니다.
@@ -154,10 +169,12 @@ git push origin main
 - Extension과 Webview 사이의 메시지 인터페이스를 구현했습니다.
 - VS Code extension 내부 JSON 저장소를 구현했습니다.
 - task 검색, category 필터, tag 입력, 목록 펼침/접힘 기능을 추가했습니다.
+- Task Description 필드를 추가하고 왼쪽 목록 제목을 Description 중심으로 표시합니다.
 - category 다중 선택 버튼 필터, 전체 펼침/전체 접음, 새 task 오늘 날짜 기본값을 추가했습니다.
 - 우선순위 필드와 Daily/Weekly/Monthly 반복 설정을 추가했습니다.
 - 왼쪽 task 목록은 우선순위가 높은 순서로 표시합니다.
-- 개요, 진행상황, 관련 링크, 관련 메일을 단일 Task 내용 editor의 1단계 bullet 템플릿으로 통합하고, 작성 예시는 `How to Use` 팝업으로 분리했습니다.
-- task 선택 시 자동 펼침, `Ctrl+S` 저장, 왼쪽 목록 하이퍼링크 렌더링을 추가했습니다.
+- 개요, 진행상황, 관련 링크, 관련 메일을 단일 Task 내용 editor의 1단계 bullet 템플릿으로 통합하고, 작성 예시는 `How to Write` 팝업으로 분리했습니다.
+- `Ctrl+S` 저장, 왼쪽 목록 하이퍼링크 렌더링을 추가했습니다.
+- `Alt+Shift+N` 새 task 생성, `Alt+Home` 첫 task 이동, `Alt+Up/Down` task 접기/펼치기, task item `Tab` 이동, `E`/`Enter` 편집 진입, 유연한 날짜 입력 정규화를 추가했습니다.
 - React/Vite Webview 앱으로 UI를 분리했습니다.
 - Tiptap 기반 rich editor와 Tiptap JSON 저장 방식을 추가했습니다.

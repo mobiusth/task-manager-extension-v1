@@ -7,6 +7,7 @@ export type RichTextContent = JSONContent & {
 export type Task = {
   id: string;
   category: string;
+  description: string;
   startDate: string;
   expectedEndDate: string;
   priority: TaskPriority;
