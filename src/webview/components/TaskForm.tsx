@@ -1,7 +1,6 @@
-import { useEffect, useRef, type FormEvent } from 'react';
-import type { RichField, Task, TaskDraft } from '../types';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import type { Task, TaskDraft } from '../types';
 import { RichTextEditor } from './RichTextEditor';
-import { emptyRichText } from '../richText';
 import { TagInput } from './TagInput';
 
 type TaskFormProps = {
@@ -15,15 +14,9 @@ type TaskFormProps = {
   onDelete(id: string): void;
 };
 
-const richFields: Array<{ key: RichField; label: string; guide: string }> = [
-  { key: 'overview', label: '개요', guide: 'Task 시작 이유, 목적을 서술해주세요.' },
-  { key: 'progress', label: '진행상황', guide: '세부적인 subtask를 서술해주세요. 예) 6/8, 기능 A 구현 완료' },
-  { key: 'links', label: '관련 링크', guide: '관련이 있는 confluence link 등을 작성해주세요.' },
-  { key: 'mails', label: '관련 메일', guide: '추적이 필요한 메일 스레드를 기록하세요. 예) 6/8, [xxx] 기능 구현 관련 건 메일' }
-];
-
 export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleOpen, onSave, onCancel, onDelete }: TaskFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const updateDraft = (changes: Partial<TaskDraft>) => {
     onDraftChange({ ...draft, ...changes });
@@ -99,15 +92,22 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
         </div>
 
         <div className="rich-field-grid">
-          {richFields.map((field) => (
+          <div className="rich-editor-panel">
+            <div className="rich-editor-header">
+              <div>
+                <div className="field-label">Task 내용</div>
+                <p className="field-guide">개요, 진행상황, 관련 링크, 관련 메일을 작성하세요.</p>
+              </div>
+              <button className="secondary" type="button" onClick={() => setIsHelpOpen(true)}>
+                How to Use
+              </button>
+            </div>
             <RichTextEditor
-              key={`${selectedTask?.id || 'new'}-${field.key}`}
-              label={field.label}
-              guide={field.guide}
-              content={draft[field.key] || emptyRichText}
-              onChange={(content) => updateDraft({ [field.key]: content } as Partial<TaskDraft>)}
+              key={`${selectedTask?.id || 'new'}-content`}
+              content={draft.content}
+              onChange={(content) => updateDraft({ content })}
             />
-          ))}
+          </div>
         </div>
 
         <div className="form-actions">
@@ -116,6 +116,23 @@ export function TaskForm({ draft, isOpen, selectedTask, onDraftChange, onToggleO
           <button className="danger" type="button" disabled={!selectedTask} onClick={() => selectedTask && onDelete(selectedTask.id)}>삭제</button>
         </div>
       </form>
+      ) : null}
+
+      {isHelpOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsHelpOpen(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="task-content-help-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="task-content-help-title">Task 내용 작성 예시</h3>
+              <button className="icon-button" type="button" aria-label="닫기" onClick={() => setIsHelpOpen(false)}>x</button>
+            </div>
+            <ul className="help-list">
+              <li><strong>개요</strong> - 고객 요청으로 UEM v2.0 배포 안정성을 개선한다.</li>
+              <li><strong>진행상황</strong> - 6/8, 기능 A 구현 완료. 6/9, QA 시나리오 작성 중.</li>
+              <li><strong>관련 링크</strong> - https://confluence.example.com/uem-v2</li>
+              <li><strong>관련 메일</strong> - 6/8, [UEM] v2.0 배포 일정 확인 메일</li>
+            </ul>
+          </div>
+        </div>
       ) : null}
     </main>
   );

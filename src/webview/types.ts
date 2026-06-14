@@ -13,10 +13,7 @@ export type Task = {
   schedule: TaskSchedule;
   tags: string[];
   completed: boolean;
-  overview: RichTextContent;
-  progress: RichTextContent;
-  links: RichTextContent;
-  mails: RichTextContent;
+  content: RichTextContent;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,5 +35,3 @@ export type WebviewOutboundMessage =
   | { action: 'deleteTask'; id: string }
   | { action: 'toggleTaskCompleted'; id: string; completed: boolean }
   | { action: 'openExternal'; url: string };
-
-export type RichField = 'overview' | 'progress' | 'links' | 'mails';

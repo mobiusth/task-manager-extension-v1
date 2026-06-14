@@ -8,6 +8,33 @@ export const emptyRichText: RichTextContent = {
   content: [{ type: 'paragraph' }]
 };
 
+const taskContentGuideItems = [
+  '개요',
+  '진행상황',
+  '관련 링크',
+  '관련 메일'
+];
+
+export function createTaskContentTemplate(): RichTextContent {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'bulletList',
+        content: taskContentGuideItems.map((text) => ({
+          type: 'listItem',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text }]
+            }
+          ]
+        }))
+      }
+    ]
+  };
+}
+
 export function textToRichText(text: string): RichTextContent {
   const lines = text.trim() ? text.split(/\r?\n/) : [''];
 

@@ -5,13 +5,11 @@ import type { RichTextContent } from '../types';
 import { emptyRichText } from '../richText';
 
 type RichTextEditorProps = {
-  label: string;
-  guide?: string;
   content: RichTextContent;
   onChange(content: RichTextContent): void;
 };
 
-export function RichTextEditor({ label, guide, content, onChange }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [StarterKit],
     content: content || emptyRichText,
@@ -39,9 +37,7 @@ export function RichTextEditor({ label, guide, content, onChange }: RichTextEdit
 
   return (
     <section className="rich-editor">
-      <div className="field-label">{label}</div>
-      {guide ? <p className="field-guide">{guide}</p> : null}
-      <div className="editor-toolbar" aria-label={`${label} 서식 도구`}>
+      <div className="editor-toolbar" aria-label="Task 내용 서식 도구">
         <button type="button" title="Bold" className={editor?.isActive('bold') ? 'active' : ''} onClick={() => editor?.chain().focus().toggleBold().run()}>
           B
         </button>

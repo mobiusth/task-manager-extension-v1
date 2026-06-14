@@ -21,9 +21,10 @@ VS Code Webview 기반 로컬 task 관리 확장입니다.
 - 새 task 작성 시 시작 시간 오늘 날짜 자동 입력
 - 우선순위 1~5 선택, 높은 우선순위가 왼쪽 목록 상단에 표시
 - Daily, Weekly, Monthly 반복 task 설정
-- rich editor별 작성 가이드 표시
+- 단일 rich editor에 개요, 진행상황, 관련 링크, 관련 메일 항목 템플릿 제공
+- `How to Use` 팝업으로 Task 내용 작성 예시 제공
 - React 기반 Webview UI
-- Tiptap rich editor로 개요, 진행상황, 관련 링크, 관련 메일 편집
+- Tiptap rich editor로 Task 내용 편집
 - rich editor 내용은 Tiptap JSON으로 저장
 - VS Code extension 내부 storage에 task 저장
 - `task_examples` 기반 초기 샘플 task 생성
@@ -101,6 +102,13 @@ npm run publish:marketplace
 - `skill.md`에 안전한 Git workflow 문서화
 - 신규 작업 시작 전 `main` 최신화, 작업 상태 확인, branch 생성 절차 정리
 - `git add -A`, branch push, PR/merge 중심의 릴리즈 흐름 정리
+
+## Unreleased
+
+- task 작성 영역을 개요, 진행상황, 관련 링크, 관련 메일 4개 editor에서 단일 `Task 내용` editor로 통합
+- 새 task 기본 내용을 항목명만 있는 1단계 bullet 템플릿으로 제공
+- Task 내용 작성 예시는 `How to Use` 팝업으로 분리
+- 기존 저장 데이터의 4개 rich field는 로드 시 단일 `content` 필드로 자동 변환
 
 ## 개발 구조
 

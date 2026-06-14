@@ -1,5 +1,14 @@
 # Release Notes
 
+## Unreleased
+
+### Changed
+
+- task 작성 영역을 개요, 진행상황, 관련 링크, 관련 메일 4개 rich editor에서 단일 `Task 내용` rich editor로 통합했습니다.
+- 새 task 작성 시 개요, 진행상황, 관련 링크, 관련 메일 항목명만 1단계 bullet 템플릿으로 미리 작성됩니다.
+- Task 내용 작성 예시는 `How to Use` 팝업으로 분리했습니다.
+- 기존 `overview`, `progress`, `links`, `mails` 저장 데이터는 로드 시 단일 `content` bullet 문서로 자동 변환됩니다.
+
 ## 0.9.3
 
 ### Documentation

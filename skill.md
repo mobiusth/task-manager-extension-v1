@@ -23,18 +23,25 @@
   "schedule": "none",
   "tags": ["UEM", "QA"],
   "completed": false,
-  "overview": {
+  "content": {
     "type": "doc",
     "content": [
       {
-        "type": "paragraph",
-        "content": [{ "type": "text", "text": "개요 텍스트" }]
+        "type": "bulletList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "개요" }]
+              }
+            ]
+          }
+        ]
       }
     ]
   },
-  "progress": { "type": "doc", "content": [{ "type": "paragraph" }] },
-  "links": { "type": "doc", "content": [{ "type": "paragraph" }] },
-  "mails": { "type": "doc", "content": [{ "type": "paragraph" }] },
   "createdAt": "ISO 날짜",
   "updatedAt": "ISO 날짜"
 }
@@ -63,9 +70,10 @@ npm run compile
 - category, 시작 시간, 예상 완료 시간, tag를 입력합니다.
 - 우선순위는 1부터 5까지 선택하며 5가 가장 높고 1이 가장 낮습니다.
 - 반복 설정은 반복 없음, Daily, Weekly, Monthly 중 하나를 선택합니다.
-- tag는 쉼표로 구분해서 여러 개를 추가할 수 있습니다.
-- 개요, 진행상황, 관련 링크, 관련 메일은 Tiptap rich editor로 작성합니다.
-- 각 rich editor 위의 가이드 텍스트를 참고해 작성합니다.
+- tag는 입력 후 Enter를 눌러 chip 형태로 여러 개를 추가할 수 있습니다.
+- Task 내용은 하나의 Tiptap rich editor에서 작성합니다.
+- 새 task에는 개요, 진행상황, 관련 링크, 관련 메일 항목명이 1단계 bullet 템플릿으로 미리 작성됩니다.
+- Task 내용 작성 예시는 `How to Use` 버튼으로 팝업에서 확인합니다.
 - rich editor는 bold, italic, heading, list, quote, inline code, undo, redo를 지원합니다.
 - `저장` 버튼으로 생성 또는 수정을 완료합니다.
 - 목록의 체크박스로 완료 여부를 바꿉니다.
@@ -73,7 +81,7 @@ npm run compile
 - category 버튼은 여러 개 선택할 수 있고, `초기화`를 누르면 전체 task가 보입니다.
 - Task Manager를 처음 열면 아무 task도 선택하지 않은 상태로 시작합니다.
 - Task Manager를 처음 열면 task 작성/수정 패널은 접힌 상태입니다.
-- 왼쪽 목록의 펼침 버튼 또는 `전체 펼침`, `전체 접음`으로 개요, 진행상황, 관련 링크, 관련 메일을 확인합니다.
+- 왼쪽 목록의 펼침 버튼 또는 `전체 펼침`, `전체 접음`으로 Task 내용을 확인합니다.
 - 왼쪽 목록에서 task를 선택하면 해당 task 상세가 자동으로 펼쳐집니다.
 - 새 task 또는 task 수정 중 `Ctrl+S`로 저장할 수 있습니다.
 - 왼쪽 목록 상세의 URL 또는 Markdown 링크는 일반 클릭으로 외부 브라우저에서 열립니다.
@@ -86,6 +94,7 @@ npm run compile
 - 내부 저장 파일이 없고 기존 워크스페이스 `.task-manager/tasks.json`이 있으면 최초 1회 가져옵니다.
 - 저장 파일이 없으면 extension에 포함된 `task_examples` 내용을 기반으로 초기 샘플 task를 생성합니다.
 - 기존 plain string text 데이터는 로드 시 Tiptap JSON 문서로 자동 변환합니다.
+- 기존 `overview`, `progress`, `links`, `mails` 저장 데이터는 로드 시 단일 `content` bullet 문서로 자동 변환합니다.
 
 ## Git workflow
 
@@ -148,7 +157,7 @@ git push origin main
 - category 다중 선택 버튼 필터, 전체 펼침/전체 접음, 새 task 오늘 날짜 기본값을 추가했습니다.
 - 우선순위 필드와 Daily/Weekly/Monthly 반복 설정을 추가했습니다.
 - 왼쪽 task 목록은 우선순위가 높은 순서로 표시합니다.
-- 개요, 진행상황, 관련 링크, 관련 메일 작성 가이드를 추가했습니다.
+- 개요, 진행상황, 관련 링크, 관련 메일을 단일 Task 내용 editor의 1단계 bullet 템플릿으로 통합하고, 작성 예시는 `How to Use` 팝업으로 분리했습니다.
 - task 선택 시 자동 펼침, `Ctrl+S` 저장, 왼쪽 목록 하이퍼링크 렌더링을 추가했습니다.
 - React/Vite Webview 앱으로 UI를 분리했습니다.
 - Tiptap 기반 rich editor와 Tiptap JSON 저장 방식을 추가했습니다.

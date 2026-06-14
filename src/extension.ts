@@ -22,16 +22,19 @@ type Task = {
   schedule: TaskSchedule;
   tags: string[];
   completed: boolean;
-  overview: RichTextContent;
-  progress: RichTextContent;
-  links: RichTextContent;
-  mails: RichTextContent;
+  content: RichTextContent;
   createdAt: string;
   updatedAt: string;
 };
 
 type TaskDraft = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 type TaskSchedule = 'none' | 'daily' | 'weekly' | 'monthly';
+type LegacyTask = Partial<Task> & {
+  overview?: unknown;
+  progress?: unknown;
+  links?: unknown;
+  mails?: unknown;
+};
 
 type WebviewMessage =
   | { action: 'loadTasks' }
@@ -163,7 +166,7 @@ class TaskRepository {
 
     const data = await vscode.workspace.fs.readFile(this.storageFileUri);
     const text = Buffer.from(data).toString('utf8');
-    const parsed = JSON.parse(text) as Partial<Task>[];
+    const parsed = JSON.parse(text) as LegacyTask[];
     return Array.isArray(parsed) ? parsed.map(normalizeStoredTask) : [];
   }
 
@@ -229,10 +232,7 @@ class TaskRepository {
       schedule: sample.schedule || 'none',
       tags: sample.tags || ['UEM'],
       completed: false,
-      overview: sample.overview || textToRichContent('UEM v2.0 개발 및 배포'),
-      progress: sample.progress || textToRichContent('(진행중) 개발팀에서 기능 개선 작업 중'),
-      links: sample.links || textToRichContent('[UEM v2.0 개발 문서](https://example.com/uem-v2-docs)'),
-      mails: sample.mails || textToRichContent('4/26, VVV - UEM v2.0 개발 시작 안내'),
+      content: sample.content || createTaskContentTemplate(),
       createdAt: now,
       updatedAt: now
     };
@@ -255,7 +255,7 @@ class TaskRepository {
     try {
       const legacyStorageUri = vscode.Uri.joinPath(this.legacyWorkspaceUri, LEGACY_WORKSPACE_STORAGE_DIR, STORAGE_FILE);
       const data = await vscode.workspace.fs.readFile(legacyStorageUri);
-      const parsed = JSON.parse(Buffer.from(data).toString('utf8')) as Partial<Task>[];
+      const parsed = JSON.parse(Buffer.from(data).toString('utf8')) as LegacyTask[];
       return Array.isArray(parsed) ? parsed.map(normalizeStoredTask) : [];
     } catch {
       return [];
@@ -276,14 +276,11 @@ function normalizeDraft(task: TaskDraft): TaskDraft {
     schedule: normalizeSchedule(task.schedule),
     tags: normalizeTags(task.tags),
     completed: Boolean(task.completed),
-    overview: normalizeRichContent(task.overview),
-    progress: normalizeRichContent(task.progress),
-    links: normalizeRichContent(task.links),
-    mails: normalizeRichContent(task.mails)
+    content: normalizeRichContent(task.content)
   };
 }
 
-function normalizeStoredTask(task: Partial<Task>): Task {
+function normalizeStoredTask(task: LegacyTask): Task {
   const now = new Date().toISOString();
 
   return {
@@ -295,10 +292,7 @@ function normalizeStoredTask(task: Partial<Task>): Task {
     schedule: normalizeSchedule(task.schedule),
     tags: normalizeTags(task.tags),
     completed: Boolean(task.completed),
-    overview: normalizeRichContent(task.overview),
-    progress: normalizeRichContent(task.progress),
-    links: normalizeRichContent(task.links),
-    mails: normalizeRichContent(task.mails),
+    content: normalizeTaskContent(task),
     createdAt: task.createdAt || now,
     updatedAt: task.updatedAt || now
   };
@@ -332,8 +326,86 @@ function normalizeRichContent(value: unknown): RichTextContent {
   return textToRichContent('');
 }
 
+function normalizeTaskContent(task: LegacyTask): RichTextContent {
+  if (isRichContent(task.content) || typeof task.content === 'string') {
+    return normalizeRichContent(task.content);
+  }
+
+  const legacySections = [
+    { label: '개요', value: task.overview },
+    { label: '진행상황', value: task.progress },
+    { label: '관련 링크', value: task.links },
+    { label: '관련 메일', value: task.mails }
+  ];
+
+  if (legacySections.some((section) => richContentToPlainText(section.value))) {
+    return createTaskContentFromSections(
+      legacySections.map((section) => ({
+        label: section.label,
+        text: richContentToPlainText(section.value)
+      }))
+    );
+  }
+
+  return createTaskContentTemplate();
+}
+
 function isRichContent(value: unknown): value is RichTextContent {
   return Boolean(value && typeof value === 'object' && (value as { type?: unknown }).type === 'doc');
+}
+
+function createTaskContentTemplate(): RichTextContent {
+  return createTaskContentFromSections([
+    { label: '개요', text: '' },
+    { label: '진행상황', text: '' },
+    { label: '관련 링크', text: '' },
+    { label: '관련 메일', text: '' }
+  ]);
+}
+
+function createTaskContentFromSections(sections: Array<{ label: string; text: string }>): RichTextContent {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'bulletList',
+        content: sections.map(({ label, text }) => {
+          const value = text.trim();
+          return {
+            type: 'listItem',
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: value ? `${label} - ${value}` : label }]
+              }
+            ]
+          };
+        })
+      }
+    ]
+  };
+}
+
+function richContentToPlainText(value: unknown): string {
+  if (!value) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (!isRichContent(value)) {
+    return '';
+  }
+
+  return richNodeToPlainText(value).replace(/\s+/g, ' ').trim();
+}
+
+function richNodeToPlainText(node: RichTextContent | RichTextNode): string {
+  const currentText = 'text' in node ? node.text || '' : '';
+  const childText = (node.content || []).map(richNodeToPlainText).join(' ');
+  return `${currentText} ${childText}`.trim();
 }
 
 function textToRichContent(text: string): RichTextContent {
@@ -380,10 +452,12 @@ function parseTaskExample(text: string): Partial<TaskDraft> {
     category: first(sections.get('category')),
     startDate: first(sections.get('시작 시간')),
     expectedEndDate: first(sections.get('예상 완료 시간')),
-    overview: textToRichContent(joinSection(sections.get('개요'))),
-    progress: textToRichContent(joinSection(sections.get('진행상황'))),
-    links: textToRichContent(joinSection(sections.get('관련 링크'))),
-    mails: textToRichContent(joinSection(sections.get('관련 메일'))),
+    content: createTaskContentFromSections([
+      { label: '개요', text: joinSection(sections.get('개요')) },
+      { label: '진행상황', text: joinSection(sections.get('진행상황')) },
+      { label: '관련 링크', text: joinSection(sections.get('관련 링크')) },
+      { label: '관련 메일', text: joinSection(sections.get('관련 메일')) }
+    ]),
     completed: false
   };
 }

@@ -32,10 +32,7 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
           task.schedule,
           `priority ${task.priority}`,
           ...(task.tags || []),
-          richTextToPlainText(task.overview),
-          richTextToPlainText(task.progress),
-          richTextToPlainText(task.links),
-          richTextToPlainText(task.mails)
+          richTextToPlainText(task.content)
         ].join(' ').toLowerCase();
         return matchesCategory && (!query || searchable.includes(query));
       })
@@ -192,10 +189,7 @@ export function TaskList({ tasks, selectedId, onSelect, onCreate, onDelete, onTo
 
             {expandedIds.has(task.id) && (
               <div className="task-details" onClick={(event) => event.stopPropagation()}>
-                <DetailBlock label="개요" content={task.overview} />
-                <DetailBlock label="진행상황" content={task.progress} />
-                <DetailBlock label="관련 링크" content={task.links} />
-                <DetailBlock label="관련 메일" content={task.mails} />
+                <DetailBlock label="Task 내용" content={task.content} />
               </div>
             )}
           </div>
@@ -218,7 +212,7 @@ function scheduleLabel(schedule: Task['schedule']): string {
   }
 }
 
-function DetailBlock({ label, content }: { label: string; content: Task['overview'] }) {
+function DetailBlock({ label, content }: { label: string; content: Task['content'] }) {
   return (
     <section className="detail-block">
       <div className="detail-label">{label}</div>

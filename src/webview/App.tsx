@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Task, TaskDraft, WebviewInboundMessage } from './types';
-import { emptyRichText, normalizeRichText } from './richText';
+import { createTaskContentTemplate, normalizeRichText } from './richText';
 import { vscode } from './vscode';
 import { TaskList } from './components/TaskList';
 import { TaskForm } from './components/TaskForm';
@@ -14,10 +14,7 @@ function createEmptyDraft(): TaskDraft {
     schedule: 'none',
     tags: [],
     completed: false,
-    overview: emptyRichText,
-    progress: emptyRichText,
-    links: emptyRichText,
-    mails: emptyRichText
+    content: createTaskContentTemplate()
   };
 }
 
@@ -138,10 +135,7 @@ function normalizeTask(task: Task): Task {
     priority: normalizePriority(task.priority),
     schedule: normalizeSchedule(task.schedule),
     tags: task.tags || [],
-    overview: normalizeRichText(task.overview),
-    progress: normalizeRichText(task.progress),
-    links: normalizeRichText(task.links),
-    mails: normalizeRichText(task.mails)
+    content: normalizeRichText(task.content)
   };
 }
 
@@ -154,10 +148,7 @@ function taskToDraft(task: Task): TaskDraft {
     schedule: normalizeSchedule(task.schedule),
     tags: task.tags || [],
     completed: task.completed,
-    overview: normalizeRichText(task.overview),
-    progress: normalizeRichText(task.progress),
-    links: normalizeRichText(task.links),
-    mails: normalizeRichText(task.mails)
+    content: normalizeRichText(task.content)
   };
 }
 
