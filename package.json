@@ -2,7 +2,7 @@
   "name": "task-manager-extension-v1",
   "displayName": "Task Manager Extension",
   "description": "A local workspace task manager built as a VS Code Webview extension.",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "publisher": "local",
   "license": "MIT",
   "engines": {
@@ -47,7 +47,7 @@
     "compile:extension": "tsc -p ./",
     "typecheck:webview": "tsc -p ./tsconfig.webview.json",
     "build:webview": "vite build",
-    "package:vsix": "npm run compile && vsce package --allow-missing-repository --out task-manager-extension-v1-0.9.4.vsix",
+    "package:vsix": "npm run compile && vsce package --allow-missing-repository --no-rewrite-relative-links --out task-manager-extension-v1-0.9.5.vsix",
     "publish:marketplace": "npm run compile && vsce publish",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile"

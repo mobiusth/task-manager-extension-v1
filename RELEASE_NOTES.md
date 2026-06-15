@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.9.5
 
 ### Added
 
@@ -25,6 +25,8 @@
 ### Build
 
 - 로컬 repository URL이 없는 환경에서 VSIX를 만들 때 `--no-rewrite-relative-links` 옵션으로 README 상대 링크 검사를 우회할 수 있음을 확인했습니다.
+- 앱 버전을 `0.9.5`로 올렸습니다.
+- VSIX 출력 파일명을 `task-manager-extension-v1-0.9.5.vsix`로 갱신했습니다.
 
 ## 0.9.4
 
