@@ -48,6 +48,29 @@
 }
 ```
 
+## Work Tip 구조
+
+각 업무 팁은 task와 분리되어 VS Code extension 내부 storage의 `tips.json`에 JSON 배열로 저장됩니다.
+
+```json
+{
+  "id": "고유 ID",
+  "title": "업무 팁 제목",
+  "tags": ["Git", "VS Code"],
+  "content": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [{ "type": "text", "text": "팁 내용" }]
+      }
+    ]
+  },
+  "createdAt": "ISO 날짜",
+  "updatedAt": "ISO 날짜"
+}
+```
+
 ## 실행 방법
 
 1. 프로젝트 폴더에서 의존성을 설치합니다.
@@ -96,16 +119,33 @@ npm run compile
 - `Alt+Home`으로 현재 검색/필터 결과의 첫 번째 task로 이동할 수 있습니다.
 - `새 Task` 옆 `단축키` 버튼으로 Webview 단축키 목록을 확인할 수 있습니다.
 - task item에 포커스가 있을 때 `Tab`, `Shift+Tab`으로 다음/이전 task로 이동할 수 있습니다.
-- 마지막 task item에서 `Tab`을 누르면 해당 task를 선택하고 task 수정 Category 입력칸으로 이동합니다.
+- 마지막 task item에서 `Tab`을 누르면 해당 task를 선택하고 task 수정 Task Description 입력칸으로 이동합니다.
+- task 수정 Task Description 입력칸에서 `Shift+Tab`을 누르면 현재 검색/필터 결과의 마지막 task로 이동합니다.
 - task 수정 접기/열기 버튼에서 `Shift+Tab`을 누르면 현재 검색/필터 결과의 마지막 task로 이동합니다.
 - task item에 포커스가 있을 때 `E` 또는 `Enter`를 누르면 해당 task를 수정하면서 Task 내용 editor로 이동합니다.
 - 새 task 또는 task 수정 중 `Ctrl+S`로 저장할 수 있습니다.
 - 왼쪽 목록 상세의 URL 또는 Markdown 링크는 일반 클릭으로 외부 브라우저에서 열립니다.
 - 목록 또는 상세 화면의 삭제 버튼으로 task를 삭제합니다.
+- Webview 상단의 `Tasks` / `Tips` 탭으로 task 관리 화면과 업무 팁 화면을 전환합니다.
+- `Alt+1`로 Tasks 화면, `Alt+2`로 Tips 화면으로 전환할 수 있습니다.
+- Tasks와 Tips 화면에 진입하면 각 화면의 검색 입력칸에 포커스가 이동합니다.
+- Tips 화면에서 `새 팁` 버튼 또는 `Alt+Shift+N`으로 업무 팁을 작성합니다.
+- 업무 팁은 제목, 태그, Tiptap rich editor 기반 팁 내용으로 구성됩니다.
+- Tips 목록 검색은 제목, 태그, 팁 내용을 대상으로 합니다.
+- Tips item은 선택해도 상세 미리보기가 자동으로 펼쳐지지 않고 접힌 상태를 유지합니다.
+- Tips item에 포커스가 있을 때 `Tab`, `Shift+Tab`으로 다음/이전 팁으로 이동합니다.
+- 마지막 Tips item에서 `Tab`을 누르면 팁 수정 제목 입력칸으로 이동합니다.
+- 팁 수정 제목 입력칸에서 `Shift+Tab`을 누르면 현재 검색 결과의 마지막 팁으로 이동합니다.
+- 태그 입력에서 `Tab`을 누르면 팁 내용 editor로 이동하고, 팁 내용 editor에서 `Shift+Tab`을 누르면 태그 입력으로 돌아갑니다.
+- Tips 화면에서 `Alt+Home`으로 현재 검색 결과의 첫 번째 팁으로 이동할 수 있습니다.
+- Tips item에 포커스가 있을 때 `Alt+Up`, `Alt+Down`으로 해당 팁을 접거나 펼칠 수 있습니다.
+- Tips 화면의 `단축키` 버튼으로 팁 관련 단축키 목록을 확인할 수 있습니다.
+- 팁 작성 또는 수정 중 `Ctrl+S`로 저장할 수 있습니다.
 
 ## 저장 정책
 
 - task 데이터는 워크스페이스 폴더가 아니라 VS Code extension 내부 storage에 저장됩니다.
+- 업무 팁 데이터는 task와 분리된 `tips.json`에 저장됩니다.
 - 폴더 위치가 바뀌어도 같은 VS Code 사용자 환경에서는 같은 task 목록을 사용합니다.
 - 내부 저장 파일이 없고 기존 워크스페이스 `.task-manager/tasks.json`이 있으면 최초 1회 가져옵니다.
 - 저장 파일이 없으면 extension에 포함된 `task_examples` 내용을 기반으로 초기 샘플 task를 생성합니다.
@@ -178,6 +218,10 @@ git push origin main
 - 개요, 진행상황, 관련 링크, 관련 메일을 단일 Task 내용 editor의 1단계 bullet 템플릿으로 통합하고, 작성 예시는 `How to Write` 팝업으로 분리했습니다.
 - `Ctrl+S` 저장, 왼쪽 목록 하이퍼링크 렌더링을 추가했습니다.
 - `Alt+Shift+N` 새 task 생성, `Alt+Home` 첫 task 이동, `Alt+Up/Down` task 접기/펼치기, task item `Tab` 이동, `E`/`Enter` 편집 진입, 유연한 날짜 입력 정규화를 추가했습니다.
+- 업무 팁 저장 공간, `tips.json` 저장소, Tips CRUD UI, 제목/태그/내용 검색을 추가했습니다.
+- `Alt+1`/`Alt+2` Tasks/Tips 전환, Tips `Alt+Home`, Tips `Alt+Up/Down`, Tips item `Tab`/`Shift+Tab` 이동을 추가했습니다.
+- Tasks와 Tips 화면 진입 시 검색 입력칸으로 포커스가 이동하도록 정리했습니다.
+- 마지막 task에서 Task Description으로 이동하고, 마지막 tip에서 팁 제목으로 이동하는 키보드 흐름을 추가했습니다.
 - React/Vite Webview 앱으로 UI를 분리했습니다.
 - Tiptap 기반 rich editor와 Tiptap JSON 저장 방식을 추가했습니다.
 - Rich editor undo/redo를 Tiptap/ProseMirror history boundary로 보완해 공백, 줄바꿈, 문장부호 기준의 단어 단위로 분리했습니다.

@@ -30,6 +30,17 @@ type Task = {
 
 type TaskDraft = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 type TaskSchedule = 'none' | 'daily' | 'weekly' | 'monthly';
+type WorkTip = {
+  id: string;
+  title: string;
+  tags: string[];
+  content: RichTextContent;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type WorkTipDraft = Omit<WorkTip, 'id' | 'createdAt' | 'updatedAt'>;
+type LegacyWorkTip = Partial<WorkTip>;
 type LegacyTask = Partial<Task> & {
   overview?: unknown;
   progress?: unknown;
@@ -43,9 +54,14 @@ type WebviewMessage =
   | { action: 'updateTask'; task: Task }
   | { action: 'deleteTask'; id: string }
   | { action: 'toggleTaskCompleted'; id: string; completed: boolean }
+  | { action: 'loadTips' }
+  | { action: 'createTip'; tip: WorkTipDraft }
+  | { action: 'updateTip'; tip: WorkTip }
+  | { action: 'deleteTip'; id: string }
   | { action: 'openExternal'; url: string };
 
-const STORAGE_FILE = 'tasks.json';
+const TASKS_STORAGE_FILE = 'tasks.json';
+const TIPS_STORAGE_FILE = 'tips.json';
 const LEGACY_WORKSPACE_STORAGE_DIR = '.task-manager';
 const TASK_MANAGER_VIEW_ID = 'taskManager.tasksView';
 
@@ -78,7 +94,9 @@ class TaskManagerViewProvider implements vscode.WebviewViewProvider {
       this.context.extensionUri,
       getWorkspaceFolder()?.uri
     );
+    const tipRepository = new TipRepository(this.context.globalStorageUri);
     await repository.ensureInitialized();
+    await tipRepository.ensureInitialized();
     webviewView.webview.html = await getWebviewHtml(webviewView.webview, this.context.extensionUri);
 
     const postTasks = async (selectedId?: string) => {
@@ -86,9 +104,14 @@ class TaskManagerViewProvider implements vscode.WebviewViewProvider {
       await webviewView.webview.postMessage({ action: 'tasksLoaded', tasks, selectedId });
     };
 
+    const postTips = async (selectedId?: string) => {
+      const tips = await tipRepository.readTips();
+      await webviewView.webview.postMessage({ action: 'tipsLoaded', tips, selectedId });
+    };
+
     webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       try {
-        await handleWebviewMessage(message, repository, postTasks);
+        await handleWebviewMessage(message, repository, tipRepository, postTasks, postTips);
       } catch (error) {
         const messageText = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Task Manager 오류: ${messageText}`);
@@ -100,7 +123,9 @@ class TaskManagerViewProvider implements vscode.WebviewViewProvider {
 async function handleWebviewMessage(
   message: WebviewMessage,
   repository: TaskRepository,
-  postTasks: (selectedId?: string) => Promise<void>
+  tipRepository: TipRepository,
+  postTasks: (selectedId?: string) => Promise<void>,
+  postTips: (selectedId?: string) => Promise<void>
 ): Promise<void> {
   switch (message.action) {
     case 'loadTasks':
@@ -123,6 +148,23 @@ async function handleWebviewMessage(
     case 'toggleTaskCompleted':
       await repository.toggleCompleted(message.id, message.completed);
       await postTasks(message.id);
+      break;
+    case 'loadTips':
+      await postTips();
+      break;
+    case 'createTip': {
+      const created = await tipRepository.createTip(message.tip);
+      await postTips(created.id);
+      break;
+    }
+    case 'updateTip': {
+      const updated = await tipRepository.updateTip(message.tip);
+      await postTips(updated.id);
+      break;
+    }
+    case 'deleteTip':
+      await tipRepository.deleteTip(message.id);
+      await postTips();
       break;
     case 'openExternal':
       await openExternalUrl(message.url);
@@ -255,7 +297,7 @@ class TaskRepository {
     }
 
     try {
-      const legacyStorageUri = vscode.Uri.joinPath(this.legacyWorkspaceUri, LEGACY_WORKSPACE_STORAGE_DIR, STORAGE_FILE);
+      const legacyStorageUri = vscode.Uri.joinPath(this.legacyWorkspaceUri, LEGACY_WORKSPACE_STORAGE_DIR, TASKS_STORAGE_FILE);
       const data = await vscode.workspace.fs.readFile(legacyStorageUri);
       const parsed = JSON.parse(Buffer.from(data).toString('utf8')) as LegacyTask[];
       return Array.isArray(parsed) ? parsed.map(normalizeStoredTask) : [];
@@ -265,7 +307,75 @@ class TaskRepository {
   }
 
   private get storageFileUri(): vscode.Uri {
-    return vscode.Uri.joinPath(this.storageUri, STORAGE_FILE);
+    return vscode.Uri.joinPath(this.storageUri, TASKS_STORAGE_FILE);
+  }
+}
+
+class TipRepository {
+  constructor(private readonly storageUri: vscode.Uri) {}
+
+  async ensureInitialized(): Promise<void> {
+    try {
+      await vscode.workspace.fs.stat(this.storageFileUri);
+    } catch {
+      await this.writeTips([]);
+    }
+  }
+
+  async readTips(): Promise<WorkTip[]> {
+    await this.ensureInitialized();
+
+    const data = await vscode.workspace.fs.readFile(this.storageFileUri);
+    const text = Buffer.from(data).toString('utf8');
+    const parsed = JSON.parse(text) as LegacyWorkTip[];
+    return Array.isArray(parsed) ? parsed.map(normalizeStoredTip) : [];
+  }
+
+  async createTip(draft: WorkTipDraft): Promise<WorkTip> {
+    const now = new Date().toISOString();
+    const tip: WorkTip = {
+      ...normalizeTipDraft(draft),
+      id: createId(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const tips = await this.readTips();
+    await this.writeTips([tip, ...tips]);
+    return tip;
+  }
+
+  async updateTip(tip: WorkTip): Promise<WorkTip> {
+    const tips = await this.readTips();
+    const now = new Date().toISOString();
+    const updated: WorkTip = {
+      ...normalizeTipDraft(tip),
+      id: tip.id,
+      createdAt: tip.createdAt,
+      updatedAt: now
+    };
+    const nextTips = tips.map((current) => current.id === updated.id ? updated : current);
+
+    if (!nextTips.some((current) => current.id === updated.id)) {
+      throw new Error('Tip to update was not found.');
+    }
+
+    await this.writeTips(nextTips);
+    return updated;
+  }
+
+  async deleteTip(id: string): Promise<void> {
+    const tips = await this.readTips();
+    await this.writeTips(tips.filter((tip) => tip.id !== id));
+  }
+
+  private async writeTips(tips: WorkTip[]): Promise<void> {
+    await vscode.workspace.fs.createDirectory(this.storageUri);
+    const data = Buffer.from(JSON.stringify(tips, null, 2), 'utf8');
+    await vscode.workspace.fs.writeFile(this.storageFileUri, data);
+  }
+
+  private get storageFileUri(): vscode.Uri {
+    return vscode.Uri.joinPath(this.storageUri, TIPS_STORAGE_FILE);
   }
 }
 
@@ -299,6 +409,27 @@ function normalizeStoredTask(task: LegacyTask): Task {
     content: normalizeTaskContent(task),
     createdAt: task.createdAt || now,
     updatedAt: task.updatedAt || now
+  };
+}
+
+function normalizeTipDraft(tip: WorkTipDraft): WorkTipDraft {
+  return {
+    title: tip.title.trim(),
+    tags: normalizeTags(tip.tags),
+    content: normalizeRichContent(tip.content)
+  };
+}
+
+function normalizeStoredTip(tip: LegacyWorkTip): WorkTip {
+  const now = new Date().toISOString();
+
+  return {
+    id: tip.id || createId(),
+    title: tip.title?.trim() || '',
+    tags: normalizeTags(tip.tags),
+    content: normalizeRichContent(tip.content),
+    createdAt: tip.createdAt || now,
+    updatedAt: tip.updatedAt || now
   };
 }
 

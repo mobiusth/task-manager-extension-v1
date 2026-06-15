@@ -1,5 +1,31 @@
 # Release Notes
 
+## Unreleased
+
+### Added
+
+- Webview 내부에 `Tasks` / `Tips` 전환 탭을 추가했습니다.
+- 업무 팁을 별도 `tips.json` 저장소에 저장하는 CRUD 흐름을 추가했습니다.
+- 업무 팁은 제목, 태그, Tiptap rich editor 기반 팁 내용으로 작성할 수 있습니다.
+- Tips 검색은 제목, 태그, 팁 내용을 대상으로 동작합니다.
+- `Alt+1`, `Alt+2`로 Tasks/Tips 화면을 전환할 수 있습니다.
+- Tips 화면에서 `Alt+Shift+N` 새 팁 작성, `Ctrl+S` 저장, `Alt+Home` 첫 번째 팁 이동을 지원합니다.
+- Tips item에서 `Alt+Up`, `Alt+Down`으로 접기/펼치기를 지원합니다.
+- Tips 목록과 팁 편집 폼 사이의 `Tab`, `Shift+Tab` 포커스 이동을 추가했습니다.
+- Tips 단축키 설명 팝업을 추가했습니다.
+
+### Changed
+
+- Tasks와 Tips 화면 진입 시 검색 입력칸에 포커스가 가도록 변경했습니다.
+- 마지막 task에서 `Tab`을 누르면 Category가 아니라 Task Description 입력칸으로 이동하도록 변경했습니다.
+- Task Description에서 `Shift+Tab`을 누르면 현재 검색/필터 결과의 마지막 task로 이동합니다.
+- Tips 목록에서 `Tab`, `Shift+Tab`은 팁 item 간 이동으로 동작하며, 마지막 팁에서 `Tab`을 누르면 팁 제목 입력칸으로 이동합니다.
+- Tips 화면의 사용자 표시 문구와 단축키 팝업 문구를 한국어로 정리했습니다.
+
+### Build
+
+- 로컬 repository URL이 없는 환경에서 VSIX를 만들 때 `--no-rewrite-relative-links` 옵션으로 README 상대 링크 검사를 우회할 수 있음을 확인했습니다.
+
 ## 0.9.4
 
 ### Added

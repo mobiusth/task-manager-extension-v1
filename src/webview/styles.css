@@ -39,10 +39,45 @@ button:disabled {
   opacity: 0.5;
 }
 
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.view-tabs button {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.view-tabs button.active {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.view-tabs button:hover {
+  color: var(--fg);
+}
+
 .app {
   display: grid;
   grid-template-columns: minmax(300px, 36%) 1fr;
-  min-height: 100vh;
+  min-height: 0;
 }
 
 .sidebar {
@@ -389,6 +424,58 @@ select {
 .task-list {
   display: grid;
   gap: 8px;
+}
+
+.tip-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tip-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tip-item.active {
+  background: var(--list-active);
+  color: var(--list-active-fg);
+}
+
+.tip-summary {
+  min-width: 0;
+}
+
+.tip-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tip-preview {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  cursor: default;
+}
+
+.tip-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .task-item {
