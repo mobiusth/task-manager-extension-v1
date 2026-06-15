@@ -1,12 +1,18 @@
-import { useState, type KeyboardEvent } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from 'react';
 
 type TagInputProps = {
   tags: string[];
   onChange(tags: string[]): void;
+  onInputKeyDown?(event: KeyboardEvent<HTMLInputElement>): void;
 };
 
-export function TagInput({ tags, onChange }: TagInputProps) {
+export type TagInputHandle = {
+  focus(): void;
+};
+
+export const TagInput = forwardRef<TagInputHandle, TagInputProps>(function TagInput({ tags, onChange, onInputKeyDown }, ref) {
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const addTags = (value: string) => {
     const nextTags = value
@@ -26,6 +32,12 @@ export function TagInput({ tags, onChange }: TagInputProps) {
     onChange(tags.filter((current) => current !== tag));
   };
 
+  useImperativeHandle(ref, () => ({
+    focus() {
+      inputRef.current?.focus();
+    }
+  }), []);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
@@ -36,11 +48,13 @@ export function TagInput({ tags, onChange }: TagInputProps) {
     if (event.key === 'Backspace' && draft.length === 0 && tags.length > 0) {
       onChange(tags.slice(0, -1));
     }
+
+    onInputKeyDown?.(event);
   };
 
   return (
     <label className="tag-input-label">
-      Tags
+      태그
       <div className="tag-input">
         {tags.map((tag) => (
           <span className="tag-chip" key={tag}>
@@ -51,6 +65,7 @@ export function TagInput({ tags, onChange }: TagInputProps) {
           </span>
         ))}
         <input
+          ref={inputRef}
           value={draft}
           placeholder={tags.length === 0 ? '입력 후 Enter' : ''}
           onChange={(event) => setDraft(event.target.value)}
@@ -67,4 +82,4 @@ export function TagInput({ tags, onChange }: TagInputProps) {
       </div>
     </label>
   );
-}
+});

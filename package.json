@@ -4,6 +4,7 @@
   "description": "A local workspace task manager built as a VS Code Webview extension.",
   "version": "0.9.4",
   "publisher": "local",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
   },

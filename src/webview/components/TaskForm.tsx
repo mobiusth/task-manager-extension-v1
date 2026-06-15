@@ -14,12 +14,13 @@ type TaskFormProps = {
   onSave(): void;
   onCancel(): void;
   onDelete(id: string): void;
-  focusTarget: 'category' | 'content' | null;
+  focusTarget: 'description' | 'category' | 'content' | null;
   onFocusHandled(): void;
   onFocusLastTask(): void;
 };
 
 export type TaskFormHandle = {
+  focusDescription(): void;
   focusCategory(): void;
   focusContent(): void;
 };
@@ -29,6 +30,7 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
   ref
 ) {
   const formRef = useRef<HTMLFormElement>(null);
+  const descriptionInputRef = useRef<HTMLInputElement>(null);
   const categoryInputRef = useRef<HTMLInputElement>(null);
   const contentEditorRef = useRef<Editor | null>(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -44,6 +46,10 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
 
   const focusCategory = () => {
     window.requestAnimationFrame(() => categoryInputRef.current?.focus());
+  };
+
+  const focusDescription = () => {
+    window.requestAnimationFrame(() => descriptionInputRef.current?.focus());
   };
 
   const focusContent = (): boolean => {
@@ -69,6 +75,9 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
   }, [isOpen, onSave]);
 
   useImperativeHandle(ref, () => ({
+    focusDescription() {
+      focusDescription();
+    },
     focusCategory() {
       focusCategory();
     },
@@ -79,6 +88,12 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
 
   useEffect(() => {
     if (!isOpen || !focusTarget) {
+      return;
+    }
+
+    if (focusTarget === 'description') {
+      focusDescription();
+      onFocusHandled();
       return;
     }
 
@@ -139,7 +154,18 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
         <div className="form-grid">
           <label>
             Task Description
-            <input value={draft.description} required onChange={(event) => updateDraft({ description: event.target.value })} />
+            <input
+              ref={descriptionInputRef}
+              value={draft.description}
+              required
+              onChange={(event) => updateDraft({ description: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === 'Tab' && event.shiftKey) {
+                  event.preventDefault();
+                  onFocusLastTask();
+                }
+              }}
+            />
           </label>
           <label>
             Category

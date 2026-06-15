@@ -9,7 +9,7 @@ type TaskListProps = {
   onCreate(): void;
   onDelete(id: string): void;
   onToggleCompleted(id: string, completed: boolean): void;
-  onFocusTaskCategory(id: string): void;
+  onFocusTaskDescription(id: string): void;
   onEditTaskContent(id: string): void;
   onVisibleTaskIdsChange(ids: string[]): void;
 };
@@ -21,7 +21,7 @@ export function TaskList({
   onCreate,
   onDelete,
   onToggleCompleted,
-  onFocusTaskCategory,
+  onFocusTaskDescription,
   onEditTaskContent,
   onVisibleTaskIdsChange
 }: TaskListProps) {
@@ -157,7 +157,7 @@ export function TaskList({
       <div className="filters">
         <label>
           검색
-          <input type="search" value={searchQuery} placeholder="category, tag, 내용 검색" onChange={(event) => setSearchQuery(event.target.value)} />
+          <input data-task-search-input="true" type="search" value={searchQuery} placeholder="category, tag, 내용 검색" onChange={(event) => setSearchQuery(event.target.value)} />
         </label>
         <div className="filter-block">
           <div className="filter-heading">
@@ -217,7 +217,7 @@ export function TaskList({
                   event.preventDefault();
                 } else if (!event.shiftKey && index === visibleTasks.length - 1) {
                   event.preventDefault();
-                  onFocusTaskCategory(task.id);
+                  onFocusTaskDescription(task.id);
                 }
               }
               if (event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowUp') {
