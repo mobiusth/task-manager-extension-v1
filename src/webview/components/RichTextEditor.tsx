@@ -1,12 +1,14 @@
 import { Extension } from '@tiptap/core';
+import Link from '@tiptap/extension-link';
 import { closeHistory } from '@tiptap/pm/history';
 import { Plugin } from '@tiptap/pm/state';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { RichTextContent } from '../types';
-import { emptyRichText } from '../richText';
+import { emptyRichText, normalizeExternalHref, normalizeRichText } from '../richText';
+import { vscode } from '../vscode';
 
 const wordBoundaryPattern = /[\s,.;:!?()[\]{}"'<>\-_/\\|]+$/;
 
@@ -46,6 +48,7 @@ const WordLevelHistory = Extension.create({
 });
 
 export function RichTextEditor({ content, onChange, onReady }: RichTextEditorProps) {
+  const normalizedContent = useMemo(() => normalizeRichText(content || emptyRichText), [content]);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -53,16 +56,31 @@ export function RichTextEditor({ content, onChange, onReady }: RichTextEditorPro
           newGroupDelay: 150
         }
       }),
+      Link.configure({
+        autolink: true,
+        linkOnPaste: true,
+        openOnClick: false,
+        HTMLAttributes: {
+          rel: 'noopener noreferrer nofollow',
+          target: '_blank'
+        },
+        validate: (href) => Boolean(normalizeExternalHref(href))
+      }),
       WordLevelHistory
     ],
-    content: content || emptyRichText,
+    content: normalizedContent,
     editorProps: {
       attributes: {
         class: 'rich-editor-content'
+      },
+      handleDOMEvents: {
+        click: (_view, event) => {
+          return openClickedLink(event);
+        }
       }
     },
     onUpdate: ({ editor: currentEditor }) => {
-      onChange(currentEditor.getJSON() as RichTextContent);
+      onChange(normalizeRichText(currentEditor.getJSON() as RichTextContent));
     }
   });
 
@@ -71,12 +89,12 @@ export function RichTextEditor({ content, onChange, onReady }: RichTextEditorPro
       return;
     }
 
-    const next = JSON.stringify(content || emptyRichText);
+    const next = JSON.stringify(normalizedContent);
     const current = JSON.stringify(editor.getJSON());
     if (next !== current) {
-      editor.commands.setContent(content || emptyRichText, false);
+      editor.commands.setContent(normalizedContent, false);
     }
-  }, [content, editor]);
+  }, [normalizedContent, editor]);
 
   useEffect(() => {
     onReady?.(editor);
@@ -120,4 +138,19 @@ export function RichTextEditor({ content, onChange, onReady }: RichTextEditorPro
       <EditorContent editor={editor} />
     </section>
   );
+}
+
+function openClickedLink(event: MouseEvent): boolean {
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  const anchor = target?.closest('a');
+  const href = normalizeExternalHref(anchor?.getAttribute('href') || '');
+
+  if (!href) {
+    return false;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  vscode?.postMessage({ action: 'openExternal', url: href });
+  return true;
 }

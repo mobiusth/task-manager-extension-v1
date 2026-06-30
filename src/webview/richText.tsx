@@ -38,13 +38,13 @@ export function createTaskContentTemplate(): RichTextContent {
 export function textToRichText(text: string): RichTextContent {
   const lines = text.trim() ? text.split(/\r?\n/) : [''];
 
-  return {
+  return linkifyRichTextContent({
     type: 'doc',
     content: lines.map((line) => ({
       type: 'paragraph',
       content: line ? [{ type: 'text', text: line }] : undefined
     }))
-  };
+  });
 }
 
 export function richTextToPlainText(content: JSONContent | string | undefined): string {
@@ -69,10 +69,14 @@ export function normalizeRichText(content: JSONContent | string | undefined): Ri
   }
 
   if (content?.type === 'doc') {
-    return content as RichTextContent;
+    return linkifyRichTextContent(content as RichTextContent);
   }
 
   return emptyRichText;
+}
+
+export function linkifyRichTextContent(content: RichTextContent): RichTextContent {
+  return linkifyNode(content) as RichTextContent;
 }
 
 export function renderRichText(content: JSONContent | undefined): React.ReactNode {
@@ -160,11 +164,11 @@ function renderTextWithLinks(text: string, key: React.Key): React.ReactNode {
 }
 
 function appendLinkedText(parts: React.ReactNode[], text: string, keyPrefix: string): void {
-  const urlRegex = /(https?:\/\/[^\s)]+|www\.[^\s)]+)/gi;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  plainUrlRegex.lastIndex = 0;
 
-  while ((match = urlRegex.exec(text)) !== null) {
+  while ((match = plainUrlRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push(<React.Fragment key={`${keyPrefix}-${lastIndex}`}>{text.slice(lastIndex, match.index)}</React.Fragment>);
     }
@@ -186,16 +190,20 @@ function renderAnchor(label: string, href: string, key: React.Key): React.ReactN
   return <ExternalLink key={key} href={normalizedHref}>{label}</ExternalLink>;
 }
 
-function normalizeHref(href: string): string {
-  if (href.startsWith('https://') || href.startsWith('http://')) {
+export function normalizeExternalHref(href: string): string {
+  if (/^https?:\/\//i.test(href)) {
     return href;
   }
 
-  if (href.startsWith('www.')) {
+  if (/^www\./i.test(href)) {
     return `https://${href}`;
   }
 
   return '';
+}
+
+function normalizeHref(href: string): string {
+  return normalizeExternalHref(href);
 }
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -211,4 +219,98 @@ function ExternalLink({ href, children }: { href: string; children: React.ReactN
       {children}
     </a>
   );
+}
+
+const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/gi;
+const plainUrlRegex = /(https?:\/\/[^\s)]+|www\.[^\s)]+)/gi;
+
+function linkifyNode(node: JSONContent): JSONContent {
+  if (node.type === 'text' || node.type === 'codeBlock' || !node.content) {
+    return node;
+  }
+
+  return {
+    ...node,
+    content: linkifyChildren(node.content)
+  };
+}
+
+function linkifyChildren(children: JSONContent[]): JSONContent[] {
+  return children.flatMap((child) => {
+    if (child.type !== 'text') {
+      return [linkifyNode(child)];
+    }
+
+    return linkifyTextNode(child);
+  });
+}
+
+function linkifyTextNode(node: JSONContent): JSONContent[] {
+  const text = node.text || '';
+  const marks = node.marks || [];
+
+  if (!text || marks.some((mark) => mark.type === 'link' || mark.type === 'code')) {
+    return [node];
+  }
+
+  const nodes: JSONContent[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  markdownLinkRegex.lastIndex = 0;
+
+  while ((match = markdownLinkRegex.exec(text)) !== null) {
+    appendTextNodes(nodes, text.slice(lastIndex, match.index), marks);
+    appendMarkedTextNode(nodes, match[1], match[2], marks);
+    lastIndex = match.index + match[0].length;
+  }
+
+  appendTextNodes(nodes, text.slice(lastIndex), marks);
+  return nodes.length > 0 ? nodes : [node];
+}
+
+function appendTextNodes(nodes: JSONContent[], text: string, marks: NonNullable<JSONContent['marks']>): void {
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  plainUrlRegex.lastIndex = 0;
+
+  while ((match = plainUrlRegex.exec(text)) !== null) {
+    appendPlainTextNode(nodes, text.slice(lastIndex, match.index), marks);
+    appendMarkedTextNode(nodes, match[0], match[0], marks);
+    lastIndex = match.index + match[0].length;
+  }
+
+  appendPlainTextNode(nodes, text.slice(lastIndex), marks);
+}
+
+function appendPlainTextNode(nodes: JSONContent[], text: string, marks: NonNullable<JSONContent['marks']>): void {
+  if (!text) {
+    return;
+  }
+
+  nodes.push(marks.length > 0 ? { type: 'text', text, marks } : { type: 'text', text });
+}
+
+function appendMarkedTextNode(nodes: JSONContent[], text: string, href: string, marks: NonNullable<JSONContent['marks']>): void {
+  const normalizedHref = normalizeExternalHref(href);
+  if (!text || !normalizedHref) {
+    appendPlainTextNode(nodes, text, marks);
+    return;
+  }
+
+  nodes.push({
+    type: 'text',
+    text,
+    marks: [
+      ...marks,
+      {
+        type: 'link',
+        attrs: {
+          href: normalizedHref,
+          target: '_blank',
+          rel: 'noopener noreferrer nofollow',
+          class: null
+        }
+      }
+    ]
+  });
 }
