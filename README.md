@@ -13,7 +13,7 @@ This location is not inside the installed extension folder, so uninstalling or r
 
 VS Code Activity Bar에서 사용할 수 있는 로컬 task 관리 Webview extension입니다.
 
-현재 정리 버전: `0.9.5`
+현재 정리 버전: `0.9.6`
 
 ## 빠른 시작
 
@@ -152,19 +152,19 @@ npm run package:vsix
 repository URL이 없는 로컬 패키징에서 README 상대 링크 검사가 실패하면 다음 명령으로 VSIX를 생성할 수 있습니다.
 
 ```bash
-npx vsce package --allow-missing-repository --no-rewrite-relative-links --out task-manager-extension-v1-0.9.5.vsix
+npx vsce package --allow-missing-repository --no-rewrite-relative-links --out task-manager-extension-v1-0.9.6.vsix
 ```
 
 생성되는 파일:
 
 ```text
-task-manager-extension-v1-0.9.5.vsix
+task-manager-extension-v1-0.9.6.vsix
 ```
 
 로컬 설치:
 
 ```bash
-code --install-extension task-manager-extension-v1-0.9.5.vsix
+code --install-extension task-manager-extension-v1-0.9.6.vsix
 ```
 
 Marketplace 배포는 `package.json`의 `publisher`를 실제 VS Code Marketplace publisher ID로 바꾼 뒤 Personal Access Token으로 로그인하고 실행합니다.
