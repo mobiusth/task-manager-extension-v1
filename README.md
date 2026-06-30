@@ -1,5 +1,16 @@
 # task-manager-extension-v1
 
+## Data storage
+
+Task and tip data is stored outside the VS Code extension storage at the user's home directory:
+
+```text
+~/.task-manager-extension-v1/tasks.json
+~/.task-manager-extension-v1/tips.json
+```
+
+This location is not inside the installed extension folder, so uninstalling or reinstalling the extension does not remove the task data. On first run after this change, existing data from the previous VS Code extension storage is imported once into this folder.
+
 VS Code Activity Bar에서 사용할 수 있는 로컬 task 관리 Webview extension입니다.
 
 현재 정리 버전: `0.9.5`
