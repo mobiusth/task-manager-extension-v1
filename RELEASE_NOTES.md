@@ -1,5 +1,22 @@
 # Release Notes
 
+## 0.9.6
+
+### Added
+
+- Task/Tip rich editor에서 `http`, `https`, `www.` 링크를 자동으로 링크 처리합니다.
+- 기존 plain URL과 Markdown 링크를 로드 시 클릭 가능한 링크 mark로 정규화합니다.
+
+### Changed
+
+- 편집기 내부 링크 클릭이 Webview 내부 이동 대신 외부 브라우저 열기로 동작합니다.
+- 링크 정규화 중 `codeBlock` 같은 비링크 노드는 그대로 유지해 편집기 렌더링 안정성을 높였습니다.
+
+### Build
+
+- 앱 버전을 `0.9.6`으로 올렸습니다.
+- VSIX 출력 파일명을 `task-manager-extension-v1-0.9.6.vsix`로 갱신했습니다.
+
 ## 0.9.5
 
 ### Added
