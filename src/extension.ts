@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as os from 'os';
+import * as path from 'path';
 
 type RichTextContent = {
   type: 'doc';
@@ -62,6 +64,7 @@ type WebviewMessage =
 
 const TASKS_STORAGE_FILE = 'tasks.json';
 const TIPS_STORAGE_FILE = 'tips.json';
+const USER_DATA_STORAGE_DIR = '.task-manager-extension-v1';
 const LEGACY_WORKSPACE_STORAGE_DIR = '.task-manager';
 const TASK_MANAGER_VIEW_ID = 'taskManager.tasksView';
 
@@ -89,12 +92,14 @@ class TaskManagerViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'out', 'webview')]
     };
 
+    const storageUri = getUserDataStorageUri();
     const repository = new TaskRepository(
-      this.context.globalStorageUri,
+      storageUri,
       this.context.extensionUri,
-      getWorkspaceFolder()?.uri
+      getWorkspaceFolder()?.uri,
+      this.context.globalStorageUri
     );
-    const tipRepository = new TipRepository(this.context.globalStorageUri);
+    const tipRepository = new TipRepository(storageUri, this.context.globalStorageUri);
     await repository.ensureInitialized();
     await tipRepository.ensureInitialized();
     webviewView.webview.html = await getWebviewHtml(webviewView.webview, this.context.extensionUri);
@@ -187,11 +192,16 @@ function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
   return vscode.workspace.workspaceFolders?.[0];
 }
 
+function getUserDataStorageUri(): vscode.Uri {
+  return vscode.Uri.file(path.join(os.homedir(), USER_DATA_STORAGE_DIR));
+}
+
 class TaskRepository {
   constructor(
     private readonly storageUri: vscode.Uri,
     private readonly extensionUri: vscode.Uri,
-    private readonly legacyWorkspaceUri?: vscode.Uri
+    private readonly legacyWorkspaceUri?: vscode.Uri,
+    private readonly legacyExtensionStorageUri?: vscode.Uri
   ) {}
 
   async ensureInitialized(): Promise<void> {
@@ -199,8 +209,8 @@ class TaskRepository {
       await vscode.workspace.fs.stat(this.storageFileUri);
     } catch {
       await vscode.workspace.fs.createDirectory(this.storageUri);
-      const migratedTasks = await this.readLegacyWorkspaceTasks();
-      await this.writeTasks(migratedTasks.length > 0 ? migratedTasks : [await this.createSampleTask()]);
+      const migratedTasks = await this.readLegacyExtensionTasks();
+      await this.writeTasks(migratedTasks ?? [await this.createSampleTask()]);
     }
   }
 
@@ -306,19 +316,46 @@ class TaskRepository {
     }
   }
 
+  private async readLegacyExtensionTasks(): Promise<Task[] | undefined> {
+    const extensionTasks = await this.readTasksFromUri(this.legacyExtensionStorageUri);
+    if (extensionTasks) {
+      return extensionTasks;
+    }
+
+    const workspaceTasks = await this.readLegacyWorkspaceTasks();
+    return workspaceTasks.length > 0 ? workspaceTasks : undefined;
+  }
+
+  private async readTasksFromUri(storageUri: vscode.Uri | undefined): Promise<Task[] | undefined> {
+    if (!storageUri) {
+      return undefined;
+    }
+
+    try {
+      const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(storageUri, TASKS_STORAGE_FILE));
+      const parsed = JSON.parse(Buffer.from(data).toString('utf8')) as LegacyTask[];
+      return Array.isArray(parsed) ? parsed.map(normalizeStoredTask) : [];
+    } catch {
+      return undefined;
+    }
+  }
+
   private get storageFileUri(): vscode.Uri {
     return vscode.Uri.joinPath(this.storageUri, TASKS_STORAGE_FILE);
   }
 }
 
 class TipRepository {
-  constructor(private readonly storageUri: vscode.Uri) {}
+  constructor(
+    private readonly storageUri: vscode.Uri,
+    private readonly legacyExtensionStorageUri?: vscode.Uri
+  ) {}
 
   async ensureInitialized(): Promise<void> {
     try {
       await vscode.workspace.fs.stat(this.storageFileUri);
     } catch {
-      await this.writeTips([]);
+      await this.writeTips(await this.readLegacyExtensionTips());
     }
   }
 
@@ -372,6 +409,20 @@ class TipRepository {
     await vscode.workspace.fs.createDirectory(this.storageUri);
     const data = Buffer.from(JSON.stringify(tips, null, 2), 'utf8');
     await vscode.workspace.fs.writeFile(this.storageFileUri, data);
+  }
+
+  private async readLegacyExtensionTips(): Promise<WorkTip[]> {
+    if (!this.legacyExtensionStorageUri) {
+      return [];
+    }
+
+    try {
+      const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.legacyExtensionStorageUri, TIPS_STORAGE_FILE));
+      const parsed = JSON.parse(Buffer.from(data).toString('utf8')) as LegacyWorkTip[];
+      return Array.isArray(parsed) ? parsed.map(normalizeStoredTip) : [];
+    } catch {
+      return [];
+    }
   }
 
   private get storageFileUri(): vscode.Uri {

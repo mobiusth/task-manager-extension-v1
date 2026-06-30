@@ -11,7 +11,7 @@
 
 ## Task 구조
 
-각 task는 VS Code extension 내부 storage의 `tasks.json`에 JSON 배열로 저장됩니다.
+각 task는 사용자 홈 디렉터리의 `~/.task-manager-extension-v1/tasks.json`에 JSON 배열로 저장됩니다.
 
 ```json
 {
@@ -50,7 +50,7 @@
 
 ## Work Tip 구조
 
-각 업무 팁은 task와 분리되어 VS Code extension 내부 storage의 `tips.json`에 JSON 배열로 저장됩니다.
+각 업무 팁은 task와 분리되어 사용자 홈 디렉터리의 `~/.task-manager-extension-v1/tips.json`에 JSON 배열로 저장됩니다.
 
 ```json
 {
@@ -144,10 +144,11 @@ npm run compile
 
 ## 저장 정책
 
-- task 데이터는 워크스페이스 폴더가 아니라 VS Code extension 내부 storage에 저장됩니다.
-- 업무 팁 데이터는 task와 분리된 `tips.json`에 저장됩니다.
-- 폴더 위치가 바뀌어도 같은 VS Code 사용자 환경에서는 같은 task 목록을 사용합니다.
-- 내부 저장 파일이 없고 기존 워크스페이스 `.task-manager/tasks.json`이 있으면 최초 1회 가져옵니다.
+- task 데이터는 워크스페이스 폴더나 VS Code extension 내부 storage가 아니라 사용자 홈 디렉터리의 `~/.task-manager-extension-v1/tasks.json`에 저장됩니다.
+- 업무 팁 데이터는 task와 분리된 `~/.task-manager-extension-v1/tips.json`에 저장됩니다.
+- extension을 삭제하거나 재설치해도 사용자 홈 디렉터리의 저장 파일은 유지됩니다.
+- 새 저장 파일이 없고 기존 VS Code extension 내부 storage의 `tasks.json` 또는 `tips.json`이 있으면 최초 1회 가져옵니다.
+- 기존 extension 내부 저장 파일도 없고 워크스페이스 `.task-manager/tasks.json`이 있으면 task 데이터를 최초 1회 가져옵니다.
 - 저장 파일이 없으면 extension에 포함된 `task_examples` 내용을 기반으로 초기 샘플 task를 생성합니다.
 - 기존 plain string text 데이터는 로드 시 Tiptap JSON 문서로 자동 변환합니다.
 - 기존 `overview`, `progress`, `links`, `mails` 저장 데이터는 로드 시 단일 `content` bullet 문서로 자동 변환합니다.
