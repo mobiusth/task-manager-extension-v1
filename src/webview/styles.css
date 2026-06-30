@@ -412,11 +412,13 @@ select {
   background: color-mix(in srgb, var(--bg) 75%, var(--fg) 25%);
 }
 
+.rich-editor-content a,
 .rich-readonly a {
   color: var(--vscode-textLink-foreground);
   text-decoration: underline;
 }
 
+.rich-editor-content a:hover,
 .rich-readonly a:hover {
   color: var(--vscode-textLink-activeForeground);
 }
