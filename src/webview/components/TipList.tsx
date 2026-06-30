@@ -26,22 +26,31 @@ export function TipList({
   onVisibleTipIdsChange
 }: TipListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false);
+
+  const categories = useMemo(
+    () => Array.from(new Set(tips.flatMap((tip) => tip.category || []).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [tips]
+  );
 
   const visibleTips = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
     return tips
       .filter((tip) => {
+        const tipCategories = tip.category || [];
+        const matchesCategory = selectedCategories.size === 0 || tipCategories.some((category) => selectedCategories.has(category));
         const searchable = [
+          ...tipCategories,
           tip.title,
           ...(tip.tags || []),
           richTextToPlainText(tip.content)
         ].join(' ').toLowerCase();
-        return !query || searchable.includes(query);
+        return matchesCategory && (!query || searchable.includes(query));
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.title.localeCompare(b.title));
-  }, [searchQuery, tips]);
+  }, [searchQuery, selectedCategories, tips]);
 
   useEffect(() => {
     onVisibleTipIdsChange(visibleTips.map((tip) => tip.id));
@@ -70,6 +79,18 @@ export function TipList({
         next.delete(id);
       } else {
         next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
       }
       return next;
     });
@@ -135,6 +156,28 @@ export function TipList({
             onChange={(event) => onSearchQueryChange(event.target.value)}
           />
         </label>
+        <div className="filter-block">
+          <div className="filter-heading">
+            <span>Category</span>
+            <button className="text-button" type="button" disabled={selectedCategories.size === 0} onClick={() => setSelectedCategories(new Set())}>
+              Reset
+            </button>
+          </div>
+          <div className="category-buttons">
+            {categories.length === 0 ? (
+              <span className="filter-empty">Category none</span>
+            ) : categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`category-button ${selectedCategories.has(category) ? 'active' : ''}`}
+                onClick={() => toggleCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="tip-list">
@@ -190,6 +233,7 @@ export function TipList({
               <div className="tip-title">{tip.title || '(제목 없음)'}</div>
               <div className="task-meta">수정일 {formatDate(tip.updatedAt)}</div>
               <div className="tag-list">
+                {(tip.category || []).map((category) => <span className="category-prefix" key={category}>{category}</span>)}
                 {(tip.tags || []).map((tag) => <span className="tag" key={tag}>{tag}</span>)}
               </div>
             </div>

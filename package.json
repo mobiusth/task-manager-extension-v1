@@ -13,6 +13,7 @@
   ],
   "activationEvents": [
     "onCommand:taskManager.open",
+    "onCommand:taskManager.swapDebugData",
     "onView:taskManager.tasksView"
   ],
   "main": "./out/extension.js",
@@ -39,6 +40,16 @@
       {
         "command": "taskManager.open",
         "title": "Task Manager: Open"
+      },
+      {
+        "command": "taskManager.swapDebugData",
+        "title": "Task Manager: Swap Debug Data"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "taskManager.swapDebugData",
+        "key": "ctrl+alt+p"
       }
     ]
   },

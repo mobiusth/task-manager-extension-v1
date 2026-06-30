@@ -10,7 +10,7 @@ import { TipForm } from './components/TipForm';
 
 function createEmptyDraft(): TaskDraft {
   return {
-    category: '',
+    category: [],
     description: '',
     startDate: todayDateInputValue(),
     expectedEndDate: '',
@@ -24,6 +24,7 @@ function createEmptyDraft(): TaskDraft {
 
 function createEmptyTipDraft(): WorkTipDraft {
   return {
+    category: [],
     title: '',
     tags: [],
     content: emptyRichText
@@ -366,7 +367,8 @@ export function App() {
 function normalizeTask(task: Task): Task {
   return {
     ...task,
-    description: task.description || task.category || '',
+    category: normalizeCategories(task.category),
+    description: task.description || normalizeCategories(task.category).join(', ') || '',
     priority: normalizePriority(task.priority),
     schedule: normalizeSchedule(task.schedule),
     tags: task.tags || [],
@@ -376,8 +378,8 @@ function normalizeTask(task: Task): Task {
 
 function taskToDraft(task: Task): TaskDraft {
   return {
-    category: task.category,
-    description: task.description || task.category || '',
+    category: normalizeCategories(task.category),
+    description: task.description || normalizeCategories(task.category).join(', ') || '',
     startDate: task.startDate,
     expectedEndDate: task.expectedEndDate,
     priority: normalizePriority(task.priority),
@@ -391,6 +393,7 @@ function taskToDraft(task: Task): TaskDraft {
 function normalizeTip(tip: WorkTip): WorkTip {
   return {
     ...tip,
+    category: normalizeCategories(tip.category),
     title: tip.title || '',
     tags: tip.tags || [],
     content: normalizeRichText(tip.content)
@@ -399,6 +402,7 @@ function normalizeTip(tip: WorkTip): WorkTip {
 
 function tipToDraft(tip: WorkTip): WorkTipDraft {
   return {
+    category: normalizeCategories(tip.category),
     title: tip.title || '',
     tags: tip.tags || [],
     content: normalizeRichText(tip.content)
@@ -415,4 +419,9 @@ function normalizePriority(priority: Task['priority']): Task['priority'] {
 
 function normalizeSchedule(schedule: Task['schedule']): Task['schedule'] {
   return schedule === 'daily' || schedule === 'weekly' || schedule === 'monthly' ? schedule : 'none';
+}
+
+function normalizeCategories(category: string[] | string | undefined): string[] {
+  const values = Array.isArray(category) ? category : String(category || '').split(/[,/|;]/);
+  return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
 }

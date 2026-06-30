@@ -6,7 +6,7 @@ export type RichTextContent = JSONContent & {
 
 export type Task = {
   id: string;
-  category: string;
+  category: string[];
   description: string;
   startDate: string;
   expectedEndDate: string;
@@ -25,6 +25,7 @@ export type TaskSchedule = 'none' | 'daily' | 'weekly' | 'monthly';
 
 export type WorkTip = {
   id: string;
+  category: string[];
   title: string;
   tags: string[];
   content: RichTextContent;
@@ -56,4 +57,5 @@ export type WebviewOutboundMessage =
   | { action: 'createTip'; tip: WorkTipDraft }
   | { action: 'updateTip'; tip: WorkTip }
   | { action: 'deleteTip'; id: string }
+  | { action: 'swapDebugData'; keyword: string }
   | { action: 'openExternal'; url: string };

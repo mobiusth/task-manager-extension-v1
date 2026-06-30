@@ -77,6 +77,14 @@ export function TipForm({ draft, selectedTip, onDraftChange, onSave, onCancel, o
       <form ref={formRef} onSubmit={submit}>
         <div className="tip-form-grid">
           <label>
+            Category
+            <input
+              value={draft.category.join(', ')}
+              required
+              onChange={(event) => updateDraft({ category: splitValues(event.target.value) })}
+            />
+          </label>
+          <label>
             제목
             <input
               data-tip-title-input="true"
@@ -126,4 +134,8 @@ export function TipForm({ draft, selectedTip, onDraftChange, onSave, onCancel, o
       </form>
     </main>
   );
+}
+
+function splitValues(value: string): string[] {
+  return Array.from(new Set(value.split(/[,/|;]/).map((item) => item.trim()).filter(Boolean)));
 }

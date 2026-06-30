@@ -17,7 +17,7 @@ type RichTextNode = {
 
 type Task = {
   id: string;
-  category: string;
+  category: string[];
   description: string;
   startDate: string;
   expectedEndDate: string;
@@ -34,6 +34,7 @@ type TaskDraft = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 type TaskSchedule = 'none' | 'daily' | 'weekly' | 'monthly';
 type WorkTip = {
   id: string;
+  category: string[];
   title: string;
   tags: string[];
   content: RichTextContent;
@@ -42,8 +43,9 @@ type WorkTip = {
 };
 
 type WorkTipDraft = Omit<WorkTip, 'id' | 'createdAt' | 'updatedAt'>;
-type LegacyWorkTip = Partial<WorkTip>;
-type LegacyTask = Partial<Task> & {
+type LegacyWorkTip = Partial<Omit<WorkTip, 'category'>> & { category?: string[] | string };
+type LegacyTask = Partial<Omit<Task, 'category'>> & {
+  category?: string[] | string;
   overview?: unknown;
   progress?: unknown;
   links?: unknown;
@@ -60,10 +62,16 @@ type WebviewMessage =
   | { action: 'createTip'; tip: WorkTipDraft }
   | { action: 'updateTip'; tip: WorkTip }
   | { action: 'deleteTip'; id: string }
+  | { action: 'swapDebugData'; keyword: string }
   | { action: 'openExternal'; url: string };
 
 const TASKS_STORAGE_FILE = 'tasks.json';
 const TIPS_STORAGE_FILE = 'tips.json';
+const USER_TASKS_STORAGE_FILE = 'tasks.user.json';
+const USER_TIPS_STORAGE_FILE = 'tips.user.json';
+const DEBUG_TASKS_STORAGE_FILE = 'tasks.debug.json';
+const DEBUG_TIPS_STORAGE_FILE = 'tips.debug.json';
+const DEBUG_STATE_STORAGE_FILE = 'debug-state.json';
 const USER_DATA_STORAGE_DIR = '.task-manager-extension-v1';
 const LEGACY_WORKSPACE_STORAGE_DIR = '.task-manager';
 const TASK_MANAGER_VIEW_ID = 'taskManager.tasksView';
@@ -80,26 +88,37 @@ export function activate(context: vscode.ExtensionContext) {
     await vscode.commands.executeCommand(`${TASK_MANAGER_VIEW_ID}.focus`);
   });
 
-  context.subscriptions.push(viewProvider, disposable);
+  const debugDisposable = vscode.commands.registerCommand('taskManager.swapDebugData', async () => {
+    try {
+      await provider.promptAndSwapDebugData();
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`Task Manager debug swap failed: ${messageText}`);
+    }
+  });
+
+  context.subscriptions.push(viewProvider, disposable, debugDisposable);
 }
 
 class TaskManagerViewProvider implements vscode.WebviewViewProvider {
+  private webviewView?: vscode.WebviewView;
+  private repository?: TaskRepository;
+  private tipRepository?: TipRepository;
+  private debugDataManager?: DebugDataManager;
+
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   async resolveWebviewView(webviewView: vscode.WebviewView): Promise<void> {
+    this.webviewView = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'out', 'webview')]
     };
 
-    const storageUri = getUserDataStorageUri();
-    const repository = new TaskRepository(
-      storageUri,
-      this.context.extensionUri,
-      getWorkspaceFolder()?.uri,
-      this.context.globalStorageUri
-    );
-    const tipRepository = new TipRepository(storageUri, this.context.globalStorageUri);
+    const { repository, tipRepository, debugDataManager } = createDataManagers(this.context);
+    this.repository = repository;
+    this.tipRepository = tipRepository;
+    this.debugDataManager = debugDataManager;
     await repository.ensureInitialized();
     await tipRepository.ensureInitialized();
     webviewView.webview.html = await getWebviewHtml(webviewView.webview, this.context.extensionUri);
@@ -116,19 +135,82 @@ class TaskManagerViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       try {
-        await handleWebviewMessage(message, repository, tipRepository, postTasks, postTips);
+        await handleWebviewMessage(message, repository, tipRepository, debugDataManager, postTasks, postTips);
       } catch (error) {
         const messageText = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Task Manager 오류: ${messageText}`);
       }
     });
   }
+
+  async promptAndSwapDebugData(): Promise<void> {
+    const keyword = await vscode.window.showInputBox({
+      prompt: 'Type "debug" to swap test data.',
+      placeHolder: 'debug',
+      ignoreFocusOut: true
+    });
+
+    if (keyword === undefined) {
+      return;
+    }
+
+    const managers = await this.getDataManagers();
+    await managers.debugDataManager.swap(keyword);
+    await this.postCurrentData();
+    vscode.window.showInformationMessage('Task Manager debug data was swapped.');
+  }
+
+  private async getDataManagers(): Promise<{ repository: TaskRepository; tipRepository: TipRepository; debugDataManager: DebugDataManager }> {
+    if (this.repository && this.tipRepository && this.debugDataManager) {
+      return {
+        repository: this.repository,
+        tipRepository: this.tipRepository,
+        debugDataManager: this.debugDataManager
+      };
+    }
+
+    const managers = createDataManagers(this.context);
+    this.repository = managers.repository;
+    this.tipRepository = managers.tipRepository;
+    this.debugDataManager = managers.debugDataManager;
+    await managers.repository.ensureInitialized();
+    await managers.tipRepository.ensureInitialized();
+    return managers;
+  }
+
+  private async postCurrentData(): Promise<void> {
+    if (!this.webviewView || !this.repository || !this.tipRepository) {
+      return;
+    }
+
+    const tasks = await this.repository.readTasks();
+    const tips = await this.tipRepository.readTips();
+    await this.webviewView.webview.postMessage({ action: 'tasksLoaded', tasks });
+    await this.webviewView.webview.postMessage({ action: 'tipsLoaded', tips });
+  }
+}
+
+function createDataManagers(context: vscode.ExtensionContext): {
+  repository: TaskRepository;
+  tipRepository: TipRepository;
+  debugDataManager: DebugDataManager;
+} {
+  const storageUri = getUserDataStorageUri();
+  const repository = new TaskRepository(
+    storageUri,
+    getWorkspaceFolder()?.uri,
+    context.globalStorageUri
+  );
+  const tipRepository = new TipRepository(storageUri, context.globalStorageUri);
+  const debugDataManager = new DebugDataManager(storageUri, repository, tipRepository);
+  return { repository, tipRepository, debugDataManager };
 }
 
 async function handleWebviewMessage(
   message: WebviewMessage,
   repository: TaskRepository,
   tipRepository: TipRepository,
+  debugDataManager: DebugDataManager,
   postTasks: (selectedId?: string) => Promise<void>,
   postTips: (selectedId?: string) => Promise<void>
 ): Promise<void> {
@@ -171,6 +253,11 @@ async function handleWebviewMessage(
       await tipRepository.deleteTip(message.id);
       await postTips();
       break;
+    case 'swapDebugData':
+      await debugDataManager.swap(message.keyword);
+      await postTasks();
+      await postTips();
+      break;
     case 'openExternal':
       await openExternalUrl(message.url);
       break;
@@ -199,7 +286,6 @@ function getUserDataStorageUri(): vscode.Uri {
 class TaskRepository {
   constructor(
     private readonly storageUri: vscode.Uri,
-    private readonly extensionUri: vscode.Uri,
     private readonly legacyWorkspaceUri?: vscode.Uri,
     private readonly legacyExtensionStorageUri?: vscode.Uri
   ) {}
@@ -210,7 +296,7 @@ class TaskRepository {
     } catch {
       await vscode.workspace.fs.createDirectory(this.storageUri);
       const migratedTasks = await this.readLegacyExtensionTasks();
-      await this.writeTasks(migratedTasks ?? [await this.createSampleTask()]);
+      await this.writeTasks(migratedTasks ?? []);
     }
   }
 
@@ -266,25 +352,29 @@ class TaskRepository {
     await this.writeTasks(tasks.map((task) => task.id === id ? { ...task, completed, updatedAt: now } : task));
   }
 
+  async replaceTasks(tasks: Task[]): Promise<void> {
+    await this.writeTasks(tasks.map(normalizeStoredTask));
+  }
+
   private async writeTasks(tasks: Task[]): Promise<void> {
     await vscode.workspace.fs.createDirectory(this.storageUri);
     const data = Buffer.from(JSON.stringify(tasks, null, 2), 'utf8');
     await vscode.workspace.fs.writeFile(this.storageFileUri, data);
   }
 
-  private async createSampleTask(): Promise<Task> {
+  private async createSampleTask(): Promise<unknown> {
     const now = new Date().toISOString();
     const sample = await this.readTaskExample();
 
     return {
       id: createId(),
-      category: sample.category || 'UEM',
+      category: ['UEM', 'Release'],
       description: sample.description || sample.category || 'UEM v2.0 개발 및 배포',
       startDate: sample.startDate || '2026-06-10',
       expectedEndDate: sample.expectedEndDate || '2026-06-17',
       priority: sample.priority || 3,
       schedule: sample.schedule || 'none',
-      tags: sample.tags || ['UEM'],
+      tags: sample.tags || ['UEM', 'QA'],
       completed: false,
       content: sample.content || createTaskContentTemplate(),
       createdAt: now,
@@ -293,12 +383,7 @@ class TaskRepository {
   }
 
   private async readTaskExample(): Promise<Partial<TaskDraft>> {
-    try {
-      const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.extensionUri, 'task_examples'));
-      return parseTaskExample(Buffer.from(data).toString('utf8'));
-    } catch {
-      return {};
-    }
+    return {};
   }
 
   private async readLegacyWorkspaceTasks(): Promise<Task[]> {
@@ -355,7 +440,8 @@ class TipRepository {
     try {
       await vscode.workspace.fs.stat(this.storageFileUri);
     } catch {
-      await this.writeTips(await this.readLegacyExtensionTips());
+      const migratedTips = await this.readLegacyExtensionTips();
+      await this.writeTips(migratedTips);
     }
   }
 
@@ -405,6 +491,10 @@ class TipRepository {
     await this.writeTips(tips.filter((tip) => tip.id !== id));
   }
 
+  async replaceTips(tips: WorkTip[]): Promise<void> {
+    await this.writeTips(tips.map(normalizeStoredTip));
+  }
+
   private async writeTips(tips: WorkTip[]): Promise<void> {
     await vscode.workspace.fs.createDirectory(this.storageUri);
     const data = Buffer.from(JSON.stringify(tips, null, 2), 'utf8');
@@ -430,9 +520,63 @@ class TipRepository {
   }
 }
 
+type DebugState = {
+  active: boolean;
+};
+
+class DebugDataManager {
+  constructor(
+    private readonly storageUri: vscode.Uri,
+    private readonly taskRepository: TaskRepository,
+    private readonly tipRepository: TipRepository
+  ) {}
+
+  async swap(keyword: string): Promise<void> {
+    if (keyword.trim() !== 'debug') {
+      throw new Error('Debug data swap requires the exact keyword "debug".');
+    }
+
+    await vscode.workspace.fs.createDirectory(this.storageUri);
+    const state = await this.readState();
+
+    if (state.active) {
+      const currentDebugTasks = await this.taskRepository.readTasks();
+      const currentDebugTips = await this.tipRepository.readTips();
+      await writeJson(vscode.Uri.joinPath(this.storageUri, DEBUG_TASKS_STORAGE_FILE), currentDebugTasks);
+      await writeJson(vscode.Uri.joinPath(this.storageUri, DEBUG_TIPS_STORAGE_FILE), currentDebugTips);
+
+      const userTasks = await readJson<LegacyTask[]>(vscode.Uri.joinPath(this.storageUri, USER_TASKS_STORAGE_FILE)) ?? [];
+      const userTips = await readJson<LegacyWorkTip[]>(vscode.Uri.joinPath(this.storageUri, USER_TIPS_STORAGE_FILE)) ?? [];
+      await this.taskRepository.replaceTasks(userTasks.map(normalizeStoredTask));
+      await this.tipRepository.replaceTips(userTips.map(normalizeStoredTip));
+      await this.writeState({ active: false });
+      return;
+    }
+
+    const currentUserTasks = await this.taskRepository.readTasks();
+    const currentUserTips = await this.tipRepository.readTips();
+    await writeJson(vscode.Uri.joinPath(this.storageUri, USER_TASKS_STORAGE_FILE), currentUserTasks);
+    await writeJson(vscode.Uri.joinPath(this.storageUri, USER_TIPS_STORAGE_FILE), currentUserTips);
+
+    const debugTasks = await readJson<LegacyTask[]>(vscode.Uri.joinPath(this.storageUri, DEBUG_TASKS_STORAGE_FILE)) ?? createSampleTasks();
+    const debugTips = await readJson<LegacyWorkTip[]>(vscode.Uri.joinPath(this.storageUri, DEBUG_TIPS_STORAGE_FILE)) ?? createSampleTips();
+    await this.taskRepository.replaceTasks(debugTasks.map(normalizeStoredTask));
+    await this.tipRepository.replaceTips(debugTips.map(normalizeStoredTip));
+    await this.writeState({ active: true });
+  }
+
+  private async readState(): Promise<DebugState> {
+    return await readJson<DebugState>(vscode.Uri.joinPath(this.storageUri, DEBUG_STATE_STORAGE_FILE)) ?? { active: false };
+  }
+
+  private async writeState(state: DebugState): Promise<void> {
+    await writeJson(vscode.Uri.joinPath(this.storageUri, DEBUG_STATE_STORAGE_FILE), state);
+  }
+}
+
 function normalizeDraft(task: TaskDraft): TaskDraft {
   return {
-    category: task.category.trim(),
+    category: normalizeCategories(task.category),
     description: task.description.trim(),
     startDate: task.startDate.trim(),
     expectedEndDate: task.expectedEndDate.trim(),
@@ -446,11 +590,12 @@ function normalizeDraft(task: TaskDraft): TaskDraft {
 
 function normalizeStoredTask(task: LegacyTask): Task {
   const now = new Date().toISOString();
+  const category = normalizeCategories(task.category);
 
   return {
     id: task.id || createId(),
-    category: task.category?.trim() || '',
-    description: task.description?.trim() || task.category?.trim() || '',
+    category,
+    description: task.description?.trim() || category.join(', '),
     startDate: task.startDate?.trim() || '',
     expectedEndDate: task.expectedEndDate?.trim() || '',
     priority: normalizePriority(task.priority),
@@ -465,6 +610,7 @@ function normalizeStoredTask(task: LegacyTask): Task {
 
 function normalizeTipDraft(tip: WorkTipDraft): WorkTipDraft {
   return {
+    category: normalizeCategories(tip.category),
     title: tip.title.trim(),
     tags: normalizeTags(tip.tags),
     content: normalizeRichContent(tip.content)
@@ -476,6 +622,7 @@ function normalizeStoredTip(tip: LegacyWorkTip): WorkTip {
 
   return {
     id: tip.id || createId(),
+    category: normalizeCategories(tip.category),
     title: tip.title?.trim() || '',
     tags: normalizeTags(tip.tags),
     content: normalizeRichContent(tip.content),
@@ -498,6 +645,25 @@ function normalizeSchedule(schedule: unknown): TaskSchedule {
 
 function normalizeTags(tags: string[] | undefined): string[] {
   return Array.from(new Set((tags || []).map((tag) => tag.trim()).filter(Boolean)));
+}
+
+function normalizeCategories(category: string[] | string | undefined): string[] {
+  const values = Array.isArray(category) ? category : String(category || '').split(/[,/|;]/);
+  return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+}
+
+async function readJson<T>(uri: vscode.Uri): Promise<T | undefined> {
+  try {
+    const data = await vscode.workspace.fs.readFile(uri);
+    return JSON.parse(Buffer.from(data).toString('utf8')) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeJson(uri: vscode.Uri, value: unknown): Promise<void> {
+  const data = Buffer.from(JSON.stringify(value, null, 2), 'utf8');
+  await vscode.workspace.fs.writeFile(uri, data);
 }
 
 function normalizeRichContent(value: unknown): RichTextContent {
@@ -610,6 +776,116 @@ function createId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function createSampleTasks(): Task[] {
+  const now = new Date().toISOString();
+  const taskCategories = ['Planning', 'Development', 'QA', 'Documentation', 'Release', 'Support'];
+  const taskTags = ['Frontend', 'Backend', 'Review', 'Automation', 'Bugfix', 'Meeting'];
+  const schedules: TaskSchedule[] = ['none', 'daily', 'weekly', 'monthly'];
+  const tasks = [
+    'Implement onboarding checklist',
+    'Refine task search filters',
+    'Write release verification plan',
+    'Review keyboard shortcut coverage',
+    'Prepare migration test matrix',
+    'Add empty-state copy review',
+    'Validate webview storage recovery',
+    'Document extension install flow',
+    'Build regression smoke checklist',
+    'Triage task completion sync issue',
+    'Prepare user feedback summary',
+    'Improve rich editor undo cases',
+    'Audit accessibility labels',
+    'Update packaging notes',
+    'Verify category filter behavior',
+    'Create demo workspace scenario',
+    'Review tip CRUD edge cases',
+    'Stabilize date normalization tests',
+    'Check external link handling',
+    'Finalize sample data review'
+  ];
+
+  return tasks.map((description, index) => {
+    const start = addDays('2026-07-01', index * 2);
+    const duration = 7 + (index % 8);
+    const category = [taskCategories[index % taskCategories.length], taskCategories[(index + 2) % taskCategories.length]];
+    const tags = [taskTags[(index + 1) % taskTags.length], taskTags[(index + 4) % taskTags.length]];
+
+    return {
+      id: createId(),
+      category,
+      description,
+      startDate: start,
+      expectedEndDate: addDays(start, duration),
+      priority: (index % 5) + 1,
+      schedule: schedules[index % schedules.length],
+      tags,
+      completed: index % 6 === 0,
+      content: textToRichContent([
+        `Overview: ${description} for test data validation.`,
+        `Progress: Confirm category ${category.join(' / ')} and tags ${tags.join(' / ')} are searchable.`,
+        `Links: https://example.com/tasks/${index + 1}`,
+        `Mail: Sample coordination note ${index + 1}.`
+      ].join('\n')),
+      createdAt: now,
+      updatedAt: now
+    };
+  });
+}
+
+function createSampleTips(): WorkTip[] {
+  const now = new Date().toISOString();
+  const tipCategories = ['Workflow', 'Editor', 'Git', 'Testing', 'Communication', 'Deployment'];
+  const tipTags = ['Shortcut', 'Checklist', 'Debugging', 'Review', 'Template', 'Productivity'];
+  const tips = [
+    'Keep task titles outcome based',
+    'Use category filters during standup',
+    'Write reproduction steps first',
+    'Group related links in one paragraph',
+    'Review keyboard flows before release',
+    'Record migration assumptions',
+    'Keep tags short and reusable',
+    'Check empty lists after deletion',
+    'Use weekly review for stale tasks',
+    'Pin release notes beside QA results',
+    'Capture decisions in the tip body',
+    'Separate workaround from root cause',
+    'Run smoke checks after packaging',
+    'Keep support notes searchable',
+    'Prefer one owner per active task',
+    'Mention date formats in test notes',
+    'Verify external links from preview',
+    'Summarize feedback by category',
+    'Create templates for repeated work',
+    'Close completed tasks after review'
+  ];
+
+  return tips.map((title, index) => {
+    const category = [tipCategories[index % tipCategories.length], tipCategories[(index + 3) % tipCategories.length]];
+    const tags = [tipTags[(index + 2) % tipTags.length], tipTags[(index + 5) % tipTags.length]];
+
+    return {
+      id: createId(),
+      category,
+      title,
+      tags,
+      content: textToRichContent([
+        `${title}.`,
+        `Category: ${category.join(' / ')}.`,
+        `Tags: ${tags.join(' / ')}.`,
+        'Use this sample tip to validate filtering, search, editing, and preview rendering.'
+      ].join('\n')),
+      createdAt: now,
+      updatedAt: new Date(Date.parse(now) + index * 60_000).toISOString()
+    };
+  });
+}
+
+function addDays(dateText: string, days: number): string {
+  const date = new Date(`${dateText}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function parseTaskExample(text: string): Partial<TaskDraft> {
   const sections = new Map<string, string[]>();
   let currentSection = '';
@@ -635,7 +911,7 @@ function parseTaskExample(text: string): Partial<TaskDraft> {
   }
 
   return {
-    category: first(sections.get('category')),
+    category: normalizeCategories(first(sections.get('category'))),
     description: first(sections.get('Task Description')) || first(sections.get('description')) || first(sections.get('개요')),
     startDate: first(sections.get('시작 시간')),
     expectedEndDate: first(sections.get('예상 완료 시간')),

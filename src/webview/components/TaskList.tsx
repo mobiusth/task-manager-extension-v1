@@ -31,7 +31,7 @@ export function TaskList({
   const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false);
 
   const categories = useMemo(
-    () => Array.from(new Set(tasks.map((task) => task.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    () => Array.from(new Set(tasks.flatMap((task) => task.category || []).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [tasks]
   );
 
@@ -40,9 +40,10 @@ export function TaskList({
 
     return tasks
       .filter((task) => {
-        const matchesCategory = selectedCategories.size === 0 || selectedCategories.has(task.category);
+        const taskCategories = task.category || [];
+        const matchesCategory = selectedCategories.size === 0 || taskCategories.some((category) => selectedCategories.has(category));
         const searchable = [
-          task.category,
+          ...taskCategories,
           task.description,
           task.schedule,
           `priority ${task.priority}`,
@@ -250,7 +251,8 @@ export function TaskList({
             </button>
             <div className="task-summary">
               <div className="task-title-row">
-                <span className="category-prefix">{task.category || 'category 없음'}</span>
+                {(task.category || []).map((category) => <span className="category-prefix" key={category}>{category}</span>)}
+                {(task.category || []).length === 0 ? <span className="category-prefix">category 없음</span> : null}
                 <div className="task-title">{task.description || '(description 없음)'}</div>
                 <span className="priority-badge">P{task.priority}</span>
               </div>

@@ -169,7 +169,7 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
           </label>
           <label>
             Category
-            <input ref={categoryInputRef} value={draft.category} required onChange={(event) => updateDraft({ category: event.target.value })} />
+            <input ref={categoryInputRef} value={draft.category.join(', ')} required onChange={(event) => updateDraft({ category: splitValues(event.target.value) })} />
           </label>
           <DateInput label="시작 시간" value={draft.startDate} onChange={(startDate) => updateDraft({ startDate })} />
           <DateInput
@@ -283,3 +283,7 @@ export const TaskForm = forwardRef<TaskFormHandle, TaskFormProps>(function TaskF
     </main>
   );
 });
+
+function splitValues(value: string): string[] {
+  return Array.from(new Set(value.split(/[,/|;]/).map((item) => item.trim()).filter(Boolean)));
+}
